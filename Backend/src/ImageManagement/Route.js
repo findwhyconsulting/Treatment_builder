@@ -1,0 +1,26 @@
+import { uploadSingleClientImage, uploadSingleImage } from "../middleware/userUploads";
+import Controller from "./Controller";
+
+export default (router) => {
+  // =============================================================
+  // Private Routes (Authentication Required) concern details
+  // =============================================================
+  router.post(
+    "/upload-image",
+    uploadSingleImage("image"),
+    Controller.addImageWithCode
+  ); // for single image upload
+
+  router.post(
+    "/uploadImage",
+    uploadSingleClientImage("image"),
+  );
+
+  router.get("/images", Controller.listImages);
+  router.put("/parts", Controller.updatePartForImage);
+  router.put("/parts/coordinates", Controller.chnangeLinesCoordinates);
+
+
+
+  return router;
+};

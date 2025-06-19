@@ -1,0 +1,2850 @@
+import React, { useEffect, useRef, useState } from "react";
+import { FreeMode, Navigation, Thumbs } from "swiper/modules";
+import Modal from "react-bootstrap/Modal";
+import Form from "react-bootstrap/Form";
+import InputGroup from "react-bootstrap/InputGroup";
+import "swiper/css";
+import "bs-stepper/dist/css/bs-stepper.min.css";
+import Stepper from "bs-stepper";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
+import { Swiper, SwiperSlide } from "swiper/react";
+import "./Face.css";
+import { Alert, Button, Col, Container, Row, Tab, Tabs } from "react-bootstrap";
+import "react-phone-number-input/style.css";
+import PhoneInput from "react-phone-number-input";
+import FaceIcon3 from "../../../Assets/images/face-icon3.png";
+import BeforeAF1 from "../../../Assets/images/bef-af1.png";
+import DeleteIcon from "@mui/icons-material/Delete";
+import FacePattern from "../../../Assets/images/face-pattern.png";
+import FacePatternDemo from "../../../Assets/images/face-pattern-demo.png";
+import ImageManagementService from "../../../Services/ImagesManagementService/ImageManagementService";
+import showToast from "../../../Utils/Toast/ToastNotification";
+import ConsultationService from "../../../Services/ConsultationServices/ConsultationService";
+import { IconButton } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import DynamicFace from "./DynamicFace";
+import { FaceMesh } from "@mediapipe/face_mesh";
+import PublicContentManagementService from "../../../Services/PublicServices/ContentServices";
+import { useParams } from "react-router-dom";
+import Webcam from "react-webcam";
+
+const FACE_PARTS = {
+  Eyebrows: [70, 300],
+  Eyes: [159, 386],
+  Ears: [234, 454],
+  Forehead: [10],
+  Nose: [1],
+  Lips: [13],
+  Cheeks: [50, 280],
+  Jaw: [365],
+  Chin: [152],
+};
+
+const selectedParts = Object.keys(FACE_PARTS);
+
+const Face = (content) => {
+  const pageContent = content?.content?.data || {};
+
+  const canvasRef = useRef(null);
+  const [points, setPoints] = useState([]);
+  const [selectedPartsList, setSelectedPartsList] = useState([]);
+  const [activeParts, setActiveParts] = useState([]);
+  const { username, part } = useParams();
+  const [isServiceAvailable, setIsServiceAvailable] = useState(true);
+  const [selectedQuestions, setSelectedQuestions] = useState({});
+  const [expandedPart, setExpandedPart] = useState(null);
+  const [selectedImagePart, setSelectedImagePart] = useState("");
+  const [isDisabled, setIsDisabled] = useState(false);
+  const [stepper, setStepper] = useState(null);
+  const [currentPackage, setCurrentPackage] = useState({});
+    const [value, setValue] = useState("");
+  const navigate = useNavigate();
+
+  const [imageList, setImageList] = useState([]);
+  const [isVisible, setIsVisible] = useState(true);
+  const [toggleClass, setToggleClass] = useState("");
+  const handleToggle = () => {
+    setIsVisible(!isVisible);
+    setToggleClass((prevClass) => (prevClass === "move" ? "" : "move"));
+  };
+  const [selectedDotIndex, setSelectedDotIndex] = useState(null);
+
+  const [currentPartName, setCurrentPartName] = useState("");
+  const [thumbsSwiper, setThumbsSwiper] = useState(null);
+  const [modalShow, setModalShow] = useState(false);
+  const [modalShow1, setModalShow1] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [actualSelectedImage, setActualSelectedImage] = useState(null);
+  const [activeDotIndex, setActiveDotIndex] = useState(null);
+  const [imageParts, setImageParts] = useState([]);
+  const [filteredParts, setFilteredParts] = useState([]);
+  const { activepParts } = content?.content || [];
+  const [selectedPart, setSelectedParts] = useState([]);
+  const [submitUserSelection, setSubmitUserSelection] = useState([]);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [hasStaticKey, setHasStaticKey] = useState(false);
+  const [takePhotoModal, setTakePhotoModal] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const webcamRef = useRef(null);
+  const [capturedImage, setCapturedImage] = useState(null);
+  const [showWebcam, setShowWebcam] = useState(false);
+  const [selectedRadio, setSelectedRadio] = useState(false);
+  const fileInputRef = useRef(null);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    phone: "",
+    email: "",
+    ageRange: "",
+    hadAestheticTreatmentBefore: "",
+  });
+  const [errors, setErrors] = useState({});
+
+
+  // Function to toggle accordion state
+  const togglePart = (part) => {
+    setExpandedPart((prev) => (prev === part ? null : part));
+  };
+
+  //fetch the active parts for the upload image
+  const fetchActiveParts = async () => {
+    try {
+      const getContent = await PublicContentManagementService.getPublicContent({
+        userName: username,
+        part: part,
+      });
+
+      if (getContent?.data?.statusCode === 200) {
+        const activePartsArray = Array.isArray(
+          getContent?.data?.data?.activepParts
+        )
+          ? getContent.data.data.activepParts
+          : [];
+
+        const filteredParts = activePartsArray
+          .filter((partObj) => partObj.imagePartType === selectedImagePart)
+          .map((p) => ({
+            ...p,
+            isOpen: p.isOpen || false,
+          }));
+
+        setActiveParts(filteredParts);
+
+        setIsServiceAvailable(true);
+      } else {
+        setIsServiceAvailable(false);
+        showToast("error", getContent?.data?.message);
+      }
+    } catch (error) {
+      setIsServiceAvailable(false);
+      showToast("error", "Something went wrong while fetching active parts");
+    }
+  };
+
+  const toggleDynamicPart = (partName) => {
+    setActiveParts((prevParts) =>
+      prevParts.map((p) =>
+        p.part === partName ? { ...p, isOpen: !p.isOpen } : p
+      )
+    );
+  };
+
+  useEffect(() => {
+    fetchActiveParts();
+  }, [username, part, selectedImagePart]);
+
+
+
+  const getFacePart = (nearestIndex) => {
+    for (const [part, indices] of Object.entries(FACE_PARTS)) {
+      if (indices.includes(nearestIndex)) {
+        return part;
+      }
+    }
+    return "unknown";
+  };
+
+
+
+
+
+  const captureImage = () => {
+    if (webcamRef.current) {
+      const imageSrc = webcamRef.current.getScreenshot();
+      setSelectedImage(imageSrc);
+      setHasStaticKey(false);
+      setShowWebcam(false);
+    }
+  };
+
+  const validatePhoneNumber = (phone) => {
+    const errors = {};
+
+    console.log("Validating phone:", phone);
+
+    if (!phone) {
+      errors.phone = "Phone number is required";
+    } else {
+      const phoneNumber = parsePhoneNumberFromString(phone);
+
+      console.log("Parsed Phone Number:", phoneNumber);
+
+      if (!phoneNumber || !phoneNumber.isValid()) {
+        errors.phone = "Phone number is invalid";
+      } else {
+        const nationalNumberLength = phoneNumber.nationalNumber.length;
+        if (nationalNumberLength < 9 || nationalNumberLength > 10) {
+          errors.phone = `Phone number must be 9 or 10 digits (current: ${nationalNumberLength})`;
+        }
+      }
+    }
+
+    console.log("Phone Errors:", errors);
+    return errors.phone ? errors : {};
+  };
+  const handleFormDataChange = (e) => {
+    const { name, value } = e.target;
+
+    if (name === "firstName" || name === "lastName") {
+      const regex = /^[A-Za-z\s]{0,30}$/;
+      if (!regex.test(value)) return;
+    }
+
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+
+    if (name === "firstName" && value.length > 30) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        firstName: `First name cannot exceed ${30} characters`,
+      }));
+    } else if (name === "firstName" && value.length <= 30) {
+      setErrors((prevErrors) => {
+        const { firstName, ...rest } = prevErrors;
+        return rest;
+      });
+    }
+    if (name === "lastName" && value.length > 30) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        lastName: `Last name cannot exceed ${30} characters`,
+      }));
+    } else if (name === "lastName" && value.length <= 30) {
+      setErrors((prevErrors) => {
+        const { lastName, ...rest } = prevErrors;
+        return rest;
+      });
+    }
+
+    if (name === "email" && value.length > 50) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        email: `Email name cannot exceed ${50} characters`,
+      }));
+    } else if (name === "email" && value.length <= 50) {
+      setErrors((prevErrors) => {
+        const { email, ...rest } = prevErrors;
+        return rest;
+      });
+    }
+  };
+
+
+  const handlePhoneChange = (value) => {
+    setValue(value);
+    setFormData((prevData) => ({
+      ...prevData,
+      phone: value,
+    }));
+
+    // Validation for phone number
+    if (!value) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        phone: "Phone number is required",
+      }));
+    } else if (!/^\+?[1-9]\d{1,14}$/.test(value)) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        phone: "Phone number is invalid",
+      }));
+    } else if (value.length > 15) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        phone: `Phone number cannot exceed ${15} characters`,
+      }));
+    } else {
+      // Clear error if phone number is valid
+      setErrors((prevErrors) => {
+        const { phone, ...rest } = prevErrors;
+        return rest;
+      });
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+
+    // First Name
+    if (!formData.firstName) {
+      errors.firstName = "First name is required";
+    }
+
+    // Last Name
+    if (!formData.lastName) {
+      errors.lastName = "Last name is required";
+    }
+    // Phone validation
+
+    // Phone validation (Using common function)
+    Object.assign(errors, validatePhoneNumber(formData.phone));
+
+    // Email validation
+    if (!formData.email) {
+      errors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = "Email address is invalid";
+    }
+
+    // Age Range
+    if (!formData.ageRange) {
+      errors.ageRange = "Please select an age range";
+    }
+
+    // Aesthetic Treatment
+    if (!formData.hadAestheticTreatmentBefore) {
+      errors.hadAestheticTreatmentBefore =
+        "Please select if you have had aesthetic treatment before";
+    }
+
+    return errors;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const validationErrors = validateForm();
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+    } else {
+      setErrors({});
+      // Store the phone value in formData as well before submitting
+      setFormData({
+        ...formData,
+        phone: value,
+      });
+      // setLoading(true);
+
+      try {
+        const data = {
+          clinicId: pageContent?.user,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          email: formData.email,
+          ageRange: formData.ageRange,
+          hadAestheticTreatmentBefore: formData.hadAestheticTreatmentBefore,
+          selectedImage: actualSelectedImage,
+          recommandation: currentPackage,
+          areasOfConcern: submitUserSelection,
+        };
+
+        const saveDetails =
+          await ConsultationService.addNewConsultationAfterSubmit(data);
+
+        if (saveDetails?.data?.statusCode === 200) {
+          showToast("success", saveDetails?.data?.message);
+          navigate(`/submission`, { state: data });
+        } else {
+          showToast("error", saveDetails?.data?.message);
+        }
+      } catch (error) {
+        showToast(error?.message, "Something went wrong");
+      }
+
+      handleBookAppointment(e);
+    }
+  };
+
+  //function will run when click on book consultation
+  const directBookConsultation = async (e) => {
+    e.preventDefault();
+    const validationErrors = validateForm();
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+    } else {
+      setErrors({});
+      setLoading(true);
+
+      setFormData((prevData) => ({
+        ...prevData,
+        phone: value,
+      }));
+      try {
+        const data = {
+          clinicId: pageContent?.user,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          email: formData.email,
+          ageRange: formData.ageRange,
+          hadAestheticTreatmentBefore: formData.hadAestheticTreatmentBefore,
+          selectedImage: actualSelectedImage,
+          recommandation: currentPackage,
+          areasOfConcern: submitUserSelection,
+        };
+        const saveDetails = await ConsultationService.addNewConsultation(data);
+
+        if (saveDetails?.data?.statusCode === 200) {
+          showToast("success", saveDetails?.data?.message);
+
+          setTimeout(() => {
+            let redirectUrl = pageContent?.submission?.redirectUrl;
+
+            if (
+              !redirectUrl ||
+              typeof redirectUrl !== "string" ||
+              redirectUrl.trim() === ""
+            ) {
+              window.location.reload();
+            } else {
+              try {
+                const isAbsoluteURL = /^https?:\/\//i.test(redirectUrl);
+
+                if (isAbsoluteURL) {
+                  window.location.replace(redirectUrl);
+                } else {
+                  navigate(
+                    redirectUrl.startsWith("/")
+                      ? redirectUrl
+                      : `/${redirectUrl}`,
+                    {
+                      replace: true,
+                    }
+                  );
+                }
+              } catch (error) {
+                console.error("Redirection error:", error);
+                navigate("/", { replace: true });
+              }
+            }
+          }, 1000);
+        } else {
+          showToast("error", saveDetails?.data?.message);
+        }
+      } catch (error) {
+        showToast("error", "Something went wrong");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  //function will run when submit button is clicked
+  const handleBookAppointment = async (e) => {
+    e.preventDefault();
+    const data = {
+      currentPackage: currentPackage,
+      selectedImage: actualSelectedImage,
+      selectedParts: submitUserSelection,
+      content: content?.content,
+      submitData: {
+        clinicId: pageContent?.user,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        email: formData.email,
+        ageRange: formData.ageRange,
+        hadAestheticTreatmentBefore: formData.hadAestheticTreatmentBefore,
+        // selectedImage: selectedImage,
+        recommandation: currentPackage?._id,
+      },
+    };
+
+    const state = data;
+    navigate(`/submission`, { state });
+  };
+
+  const handleImageClick = (image) => {
+    setSelectedParts([]);
+    const parts = image?.parts || [];
+    setSelectedImage(image?.imageUrl);
+    setActualSelectedImage(image);
+    setImageParts(parts);
+    const filtered = filterActiveParts(parts, activepParts);
+
+    setFilteredParts(filtered);
+    setHasStaticKey(true);
+    setSubmitUserSelection([]);
+    setSelectedImagePart([]); 
+  };
+
+
+  const handleDotClickWithHighlight = (part) => {
+    setActiveDotIndex(part.partName); // Highlight the clicked dot
+    console.log(part.partName, "partname--------------------------------");
+
+    setFilteredParts((prevParts) =>
+      prevParts.map(
+        (p) =>
+          p.partName === part.partName
+            ? { ...p, isOpen: !p.isOpen } // Toggle only the clicked part
+            : p // Keep others as they are
+      )
+    );
+
+    handleDotClick(part);
+  };
+
+  const handleDotClick = (part) => {
+    if (part) {
+      setSelectedDotIndex(part.partName); // Store unique identifier
+      setCurrentPartName(part.partName);
+
+      setSelectedParts((prevParts) => {
+        const isDuplicate = prevParts.some(
+          (existingPart) => existingPart.partName === part.partName
+        );
+        if (!isDuplicate) {
+          return [...prevParts, part];
+        }
+        return prevParts;
+      });
+    }
+  };
+
+  // const handleDotClick = (index) => {
+  //   if (filteredParts[index]) {
+  //     const part = filteredParts[index];
+
+  //     setSelectedDotIndex(index);
+  //     setCurrentPartName(part.partName);
+
+  //     setSelectedParts((prevParts) => {
+  //       const isDuplicate = prevParts.some(
+  //         (existingPart) => existingPart.partName === part.partName
+  //       );
+  //       if (!isDuplicate) {
+  //         return [...prevParts, part];
+  //       }
+  //       return prevParts;
+  //     });
+  //   } else {
+  //   }
+  // };
+
+  const getAllImages = async () => {
+    try {
+      let data = {
+        type: "face",
+      };
+      const response = await ImageManagementService.getImages(data);
+      if (response?.data?.statusCode === 200) {
+        const filteredImages = response?.data?.data?.data?.filter(
+          (image) => image.type == "face"
+        );
+        console.log(
+          filteredImages,
+          "filteredImages--------------------------------"
+        );
+        setImageList(filteredImages);
+      } else {
+        showToast("error", "Images list fetching error");
+      }
+    } catch (error) {
+      showToast("error", "Images fetching error");
+    }
+  };
+
+  const filterActiveParts = (imageParts, activeParts) => {
+    if (!Array.isArray(imageParts) || !Array.isArray(activeParts)) {
+      return [];
+    }
+    console.log("imageparts-------", imageParts);
+
+    return imageParts
+      .map((imagePart) => {
+        // Find a matching active part based on the part name
+        const matchingActivePart = activeParts.find(
+          (activePart) => activePart.part === imagePart.partName
+        );
+
+        // If a matching part is found, include the questions and other data
+        if (matchingActivePart) {
+          return {
+            ...imagePart,
+            imagePartType: matchingActivePart.imagePartType,
+            questions: matchingActivePart.question || [],
+          };
+        }
+
+        // If no match is found, return the original imagePart without questions
+        return {
+          ...imagePart,
+          questions: [], // Empty questions if no active part matches
+        };
+      })
+      .filter((part) => part.questions.length > 0); // Optionally filter to keep only parts with questions
+  };
+
+  // Example usage
+  // const combinedParts = filterActiveParts(imageParts, activepParts);
+
+  // const handleQuestionSelect = (partName, questionText, packageIds) => {
+  //   setSubmitUserSelection((prevSelections) => {
+  //     const existingIndex = prevSelections.findIndex(
+  //       (item) => item.partName === partName && item.question === questionText
+  //     );
+
+  //     if (existingIndex === -1) {
+  //       return [
+  //         ...prevSelections,
+  //         { partName, question: questionText, packageIds },
+  //       ];
+  //     } else {
+  //       return prevSelections.filter(
+  //         (item) =>
+  //           !(item.partName === partName && item.question === questionText)
+  //       );
+  //     }
+  //   });
+  // };
+
+  const handleQuestionSelect = (partName, questionText, packageIds) => {
+    setSubmitUserSelection((prevSelections) => {
+      const existingIndex = prevSelections.findIndex(
+        (item) => item.partName === partName && item.question === questionText
+      );
+
+      if (existingIndex === -1) {
+        // Remove previously selected question for the same part before adding new one
+        const updatedSelections = prevSelections.filter(
+          (item) => item.partName !== partName
+        );
+
+        return [
+          ...updatedSelections,
+          { partName, question: questionText, packageIds },
+        ];
+      } else {
+        return prevSelections.filter(
+          (item) =>
+            !(item.partName === partName && item.question === questionText)
+        );
+      }
+    });
+  };
+
+  // const handleQuestionSelect = (partName, questionText, packageIds) => {
+  //   setSubmitUserSelection((prevSelections) => {
+  //     // Remove previous selection for the same partName and add the new selection
+  //     const filteredSelections = prevSelections.filter(
+  //       (item) => item.partName !== partName // Remove all questions for the same part
+  //     );
+
+  //     return [...filteredSelections, { partName, question: questionText, packageIds }];
+  //   });
+  // };
+
+  // const handleQuestionSelect = (partName, questionText, packageIds) => {
+  //   setSubmitUserSelection((prevSelections) => {
+  //     // Find the selected question
+  //     const existingIndex = prevSelections.findIndex(
+  //       (item) => item.partName === partName && item.question === questionText
+  //     );
+
+  //     if (existingIndex === -1) {
+  //       // If the question is not selected, add it
+  //       return [
+  //         ...prevSelections,
+  //         { partName, question: questionText, packageIds },
+  //       ];
+  //     } else {
+  //       // If it is already selected, remove it (toggle deselect)
+  //       return prevSelections.filter(
+  //         (item) =>
+  //           !(item.partName === partName && item.question === questionText)
+  //       );
+  //     }
+  //   });
+  // };
+
+  // const handleRemovePart = (indexToRemove) => {
+  //   console.log("indexToRemove : ", indexToRemove);
+
+  //   setSelectedParts((prevParts) =>
+  //     prevParts.filter((_, index) => index !== indexToRemove)
+  //   );
+  // };
+  const handleRemovePart = (partToRemove) => {
+    // Remove part from selectedParts
+    setSelectedParts((prevParts) =>
+      prevParts.filter((part) => part.partName !== partToRemove.partName)
+    );
+
+    // Also remove the part from submitUserSelection (if it's there)
+    setSubmitUserSelection((prevSelections) =>
+      prevSelections.filter(
+        (selection) => selection.partName !== partToRemove.partName
+      )
+    );
+  };
+
+  const submitSelectionForPackage = async () => {
+    if (isDisabled) return;
+
+    try {
+      setIsDisabled(true);
+
+      let params = {
+        data: submitUserSelection,
+      };
+      const submitSelection = await ConsultationService.getRecommendation(
+        params
+      );
+      if (submitSelection?.data?.statusCode === 200) {
+        setCurrentPackage(submitSelection?.data?.data);
+
+        if (currentPackage && stepper) {
+          stepper.next();
+        }
+      } else {
+        showToast("error", "Failed to get package for questions");
+      }
+    } catch (error) {
+      console.error("Error while submitting data:", error);
+      showToast("error", "An error occurred while submitting your data");
+    }
+  };
+
+  const handleTabSwitch = (key) => {
+    setSelectedImagePart(key);
+  };
+
+  const upperFace = () => {
+    setSelectedImagePart("upperFace");
+  };
+
+  const midFace = () => {
+    setSelectedImagePart("midFace");
+  };
+
+  const lowerFace = () => {
+    setSelectedImagePart("lowerFace");
+  };
+
+  useEffect(() => {
+    const stepperElement = document.querySelector("#stepper1");
+    const stepperInstance = new Stepper(stepperElement, {
+      linear: true,
+      animation: true,
+    });
+
+    const handleClick = (event) => {
+      if (event.target.closest(".step-trigger")) {
+        const targetStepIndex = [
+          ...stepperElement.querySelectorAll(".step-trigger"),
+        ].indexOf(event.target.closest(".step-trigger"));
+        const currentStepIndex = stepperInstance._currentIndex;
+
+        if (
+          targetStepIndex !== currentStepIndex + 1 &&
+          targetStepIndex !== currentStepIndex - 1
+        ) {
+          event.stopPropagation();
+          event.preventDefault();
+        }
+      }
+    };
+
+    const handleShownStep = (event) => {
+      const currentStepIndex = stepperInstance._currentIndex;
+      const targetStepIndex = event.detail.indexStep;
+
+      if (
+        targetStepIndex !== currentStepIndex + 1 &&
+        targetStepIndex !== currentStepIndex - 1
+      ) {
+        event.preventDefault();
+      }
+    };
+
+    stepperElement.addEventListener("click", handleClick);
+    stepperElement.addEventListener("shown.bs-stepper", handleShownStep);
+
+    setStepper(stepperInstance);
+
+    getAllImages();
+    return () => {
+      stepperElement.removeEventListener("click", handleClick);
+      stepperElement.removeEventListener("shown.bs-stepper", handleShownStep);
+    };
+  }, []);
+
+  //function for upload image
+  const handleImageChange = async (event) => {
+    const file = event.target.files[0];
+
+    if (file) {
+      setHasStaticKey(false);
+      setSubmitUserSelection([]);
+      const tempImageUrl = URL.createObjectURL(file);
+      setSelectedImage(tempImageUrl);
+
+      // Prepare form data for upload
+      const formData = new FormData();
+      formData.append("image", file);
+
+      try {
+        const response = await ImageManagementService.uploadClientImage(
+          formData
+        );
+
+        if (response?.data?.statusCode === 200) {
+          showToast("success", "Image Uploaded successfully.");
+          console.log("Uploaded file URL:", response.data.fileUrl);
+
+          setUploadedImageUrl(response.data.fileUrl);
+          setSelectedImage(response.data.fileUrl);
+          setActualSelectedImage({ imageUrl: response.data.fileUrl });
+
+          URL.revokeObjectURL(tempImageUrl);
+        } else {
+          showToast("error", "Failed to upload Image.");
+        }
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        showToast("error", "Error Uploading image.");
+      }
+    }
+  };
+
+  const submitImage = async () => {
+    if (!selectedImage) {
+      showToast("error", "Please capture or upload an image first.");
+      return;
+    }
+
+    setHasStaticKey(false);
+    setSubmitUserSelection([]);
+
+    let file;
+
+    if (selectedImage.startsWith("data:image")) {
+      const byteCharacters = atob(selectedImage.split(",")[1]);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: "image/jpeg" });
+
+      file = new File([blob], "captured_image.jpg", { type: "image/jpeg" });
+    } else {
+      file = selectedImage;
+    }
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const response = await ImageManagementService.uploadClientImage(formData);
+
+      if (response?.data?.statusCode === 200) {
+        showToast("success", "Image Uploaded successfully.");
+        // console.log("Uploaded file URL:", response.data.fileUrl);
+
+        setUploadedImageUrl(response.data.fileUrl);
+        setSelectedImage(response.data.fileUrl);
+        setActualSelectedImage({ imageUrl: response.data.fileUrl });
+        setTakePhotoModal(false);
+        setModalShow1(false);
+      } else {
+        showToast("error", "Failed to upload Image.");
+      }
+    } catch (error) {
+      console.error("Error submitting image:", error);
+      showToast("error", "Error submitting image.");
+    }
+  };
+
+  return (
+    <>
+      <section className="face-stapper">
+        <Container>
+          <Row>
+            <Col>
+              <h2>
+                {pageContent?.headingSettings?.heading1 ||
+                  "Personalised treatment options in 2 minutes"}
+              </h2>
+              <div id="stepper1" className="bs-stepper">
+                <div className="bs-stepper-header">
+                  {["#test-l-1", "#test-l-2", "#test-l-3", "#test-l-4"].map(
+                    (target, index) => (
+                      <div key={index} className="step" data-target={target}>
+                        <button className="step-trigger">
+                          <span
+                            className="bs-stepper-circle"
+                            style={{
+                              border: document
+
+                                .querySelector(`[data-target="${target}"]`)
+
+                                ?.classList.contains("active")
+                                ? `8px solid ${
+                                    pageContent?.buttonSettings?.buttonColor ||
+                                    ""
+                                  }`
+                                : "8px solid transparent",
+                            }}
+                          >
+                            STEP
+                            <br /> {index + 1}
+                          </span>
+                        </button>
+                      </div>
+                    )
+                  )}
+                </div>
+                <div className="bs-stepper-content">
+                  <form>
+                    <div id="test-l-1" className="content">
+                      <h3>
+                        Step 1:{" "}
+                        {pageContent?.step1?.heading2 ||
+                          "Choose or upload an image"}
+                      </h3>
+                      <p className="head-discrption">
+                        {pageContent?.step1?.step1Description ||
+                          `You’ll be using this image to identify the areas you’d
+                        like to address or enhance, so it’s useful to use an
+                        image that reminds you of your own face (or your own
+                        face!).`}
+                      </p>
+                      <div className="swiper-container  mt-4">
+                        {/* Custom navigation buttons */}
+                        <button
+                          className="swiper-button-prev"
+                          style={{
+                            background:
+                              pageContent?.buttonSettings?.buttonColor || "",
+                            "--button-hover-bg":
+                              pageContent?.buttonSettings?.buttonHoverColor ||
+                              "#947287",
+                          }}
+                        >
+                          <span
+                          // style={{
+                          //   color:
+                          //     pageContent?.buttonSettings?.buttonHoverColor ||
+                          //     "black",
+                          // }}
+                          >
+                            <svg
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
+                                stroke="white"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              />
+                            </svg>
+                          </span>
+                        </button>
+                        <button
+                          className="swiper-button-next"
+                          style={{
+                            background:
+                              pageContent?.buttonSettings?.buttonColor || "",
+                            "--button-hover-bg":
+                              pageContent?.buttonSettings?.buttonHoverColor ||
+                              "#947287",
+                          }}
+                        >
+                          <svg
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
+                              stroke="white"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                        <Swiper
+                          modules={[Navigation]}
+                          navigation={{
+                            nextEl: ".swiper-button-next",
+                            prevEl: ".swiper-button-prev",
+                          }}
+                          breakpoints={{
+                            0: {
+                              slidesPerView: 1.2,
+                            },
+                            768: {
+                              slidesPerView: 2,
+                            },
+                            992: {
+                              slidesPerView: 3,
+                            },
+                            1240: {
+                              slidesPerView: 4,
+                            },
+                          }}
+                          spaceBetween={20}
+                          slidesPerView={4}
+                          pagination={{ clickable: true }}
+                          // onSlideChange={() => console.log("slide change")}
+                          // onSwiper={(swiper) => console.log(swiper)}
+                        >
+                          {imageList.map((image) => (
+                            <SwiperSlide
+                              key={image._id}
+                              onClick={() => handleImageClick(image)}
+                              className={
+                                selectedImage === image?.imageUrl
+                                  ? "current-img"
+                                  : ""
+                              }
+                            >
+                              <img
+                                src={image.imageUrl}
+                                className="img-fluid"
+                                alt={image.uniqueCode || "Image"}
+                              />
+                            </SwiperSlide>
+                          ))}
+                        </Swiper>
+                      </div>
+                      <div className="step-footer">
+                        <div>
+                          {/* Button to open modal */}
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={() => setModalShow(false)}
+                            style={{
+                              background:
+                                pageContent?.buttonSettings?.buttonColor || "",
+                              "--button-hover-bg":
+                                pageContent?.buttonSettings?.buttonHoverColor ||
+                                "#947287",
+                            }}
+                          >
+                            <span
+                              style={{
+                                color:
+                                  pageContent?.buttonSettings
+                                    ?.buttonTextColor || "",
+                              }}
+                            >
+                              UPLOAD AN IMAGE
+                            </span>
+                            <svg
+                              className="ms-3"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M15 21H9C6.17157 21 4.75736 21 3.87868 20.1213C3 19.2426 3 17.8284 3 15M21 15C21 17.8284 21 19.2426 20.1213 20.1213C19.8215 20.4211 19.4594 20.6186 19 20.7487"
+                                stroke="#050505"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M12 16V3M12 3L16 7.375M12 3L8 7.375"
+                                stroke="#050505"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                          <Modal
+                            show={modalShow}
+                            size="xl"
+                            className="custom-popup"
+                            aria-labelledby="contained-modal-title-vcenter"
+                            centered
+                            onHide={() => setModalShow(false)}
+                          >
+                            <Modal.Header
+                              closeButton
+                              onHide={() => setModalShow(false)}
+                            ></Modal.Header>
+                            <Modal.Body className="d-flex flex-column align-items-center text-center">
+                              <h4>Upload a photo</h4>
+                              <p>Align your photo to the pattern below.</p>
+
+                              {/* Image Upload Box */}
+                              <div
+                                className="upload-box mt-3"
+                                onClick={() => fileInputRef.current.click()}
+                                style={{
+                                  width: "500px",
+                                  height: "500px",
+                                  border: "2px dashed #ccc",
+                                  borderRadius: "10px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  cursor: "pointer",
+                                  overflow: "hidden",
+                                  position: "relative",
+                                  backgroundColor: "#fff",
+                                }}
+                              >
+                                {hasStaticKey ? (
+                                  <p style={{ color: "#999" }}>
+                                    Click to upload
+                                  </p>
+                                ) : selectedImage ? (
+                                  <img
+                                    src={selectedImage}
+                                    alt="Uploaded Preview"
+                                    className="img-fluid"
+                                    style={{
+                                      width: "100%",
+                                      height: "100%",
+                                      objectFit: "cover",
+                                    }}
+                                  />
+                                ) : (
+                                  <p style={{ color: "#999" }}>
+                                    Click to upload
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Hidden File Input */}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                ref={fileInputRef}
+                                style={{ display: "none" }}
+                                onChange={handleImageChange}
+                              />
+
+                              <Button
+                                onClick={() => fileInputRef.current.click()}
+                                className="mt-3"
+                              >
+                                Choose Image
+                              </Button>
+                            </Modal.Body>
+
+                            <Modal.Footer>
+                              <div className="step-footer">
+                                <button
+                                  type="button"
+                                  className="btn btn-primary"
+                                  onClick={() => setModalShow(false)}
+                                  style={{
+                                    background:
+                                      pageContent?.buttonSettings
+                                        ?.buttonColor || "",
+                                    "--button-hover-bg":
+                                      pageContent?.buttonSettings
+                                        ?.buttonHoverColor || "#947287",
+                                  }}
+                                >
+                                  <svg
+                                    className="me-3"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                  >
+                                    <path
+                                      d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
+                                      stroke="white"
+                                      stroke-width="1.5"
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                    />
+                                  </svg>
+                                  <span
+                                    style={{
+                                      color:
+                                        pageContent?.buttonSettings
+                                          ?.buttonTextColor || "",
+                                    }}
+                                  >
+                                    GO BACK
+                                  </span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-primary"
+                                  onClick={() => {
+                                    if (stepper) stepper.next();
+                                    setModalShow(false);
+                                  }}
+                                  style={{
+                                    background:
+                                      pageContent?.buttonSettings
+                                        ?.buttonColor || "",
+                                    "--button-hover-bg":
+                                      pageContent?.buttonSettings
+                                        ?.buttonHoverColor || "#947287",
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      color:
+                                        pageContent?.buttonSettings
+                                          ?.buttonTextColor || "",
+                                    }}
+                                  >
+                                    Done, Upload
+                                  </span>
+                                  <svg
+                                    className="ms-3"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                  >
+                                    <path
+                                      d="M15 21H9C6.17157 21 4.75736 21 3.87868 20.1213C3 19.2426 3 17.8284 3 15M21 15C21 17.8284 21 19.2426 20.1213 20.1213C19.8215 20.4211 19.4594 20.6186 19 20.7487"
+                                      stroke="#050505"
+                                      stroke-width="1.5"
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                    />
+                                    <path
+                                      d="M12 16V3M12 3L16 7.375M12 3L8 7.375"
+                                      stroke="#050505"
+                                      stroke-width="1.5"
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                    />
+                                  </svg>
+                                </button>
+                              </div>
+                            </Modal.Footer>
+                          </Modal>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => setModalShow1(false)}
+                          style={{
+                            background:
+                              pageContent?.buttonSettings?.buttonColor || "",
+                            "--button-hover-bg":
+                              pageContent?.buttonSettings?.buttonHoverColor ||
+                              "#947287",
+                          }}
+                        >
+                          <span
+                            style={{
+                              color:
+                                pageContent?.buttonSettings?.buttonTextColor ||
+                                "",
+                            }}
+                          >
+                            TAKE A PHOTO
+                          </span>
+                          <svg
+                            className="ms-3"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M12 16C13.6569 16 15 14.6569 15 13C15 11.3431 13.6569 10 12 10C10.3431 10 9 11.3431 9 13C9 14.6569 10.3431 16 12 16Z"
+                              stroke="white"
+                              strokeWidth="1.3"
+                            />
+                            <path
+                              d="M1 13.5151C1 10.1104 1 8.40801 1.83224 7.18511C2.19253 6.65571 2.6555 6.20116 3.19471 5.84742C3.99506 5.32237 4.99703 5.1347 6.53111 5.06762C7.26317 5.06762 7.89347 4.52298 8.03703 3.81818C8.25239 2.76099 9.19783 2 10.2959 2H13.9263C15.0243 2 15.9698 2.76099 16.1852 3.81818C16.3288 4.52298 16.959 5.06762 17.6911 5.06762C19.2252 5.1347 20.2271 5.32237 21.0276 5.84742C21.5667 6.20116 22.0297 6.65571 22.39 7.18511C23.2222 8.40801 23.2222 10.1104 23.2222 13.5151C23.2222 16.9199 23.2222 18.6223 22.39 19.8452C22.0297 20.3746 21.5667 20.8291 21.0276 21.1829C19.782 22 18.0481 22 14.5802 22H9.64198C6.17417 22 4.44027 22 3.19471 21.1829C2.6555 20.8291 2.19253 20.3746 1.83224 19.8452C1.59718 19.4998 1.42851 19.1161 1.30748 18.6667"
+                              stroke="white"
+                              strokeWidth="1.3"
+                              strokeLinecap="round"
+                            />
+                            <path
+                              d="M19 10H18"
+                              stroke="white"
+                              strokeWidth="1.3"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => stepper && stepper.next()}
+                          disabled={!selectedImage}
+                          style={{
+                            background:
+                              pageContent?.buttonSettings?.buttonColor || "",
+                            "--button-hover-bg":
+                              pageContent?.buttonSettings?.buttonHoverColor ||
+                              "#947287",
+                          }}
+                        >
+                          <span
+                            style={{
+                              color:
+                                pageContent?.buttonSettings?.buttonTextColor ||
+                                "",
+                            }}
+                          >
+                            NEXT STEP
+                          </span>
+                          <svg
+                            className="ms-3"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
+                              stroke="white"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div id="test-l-2" className="content">
+                      <h3>
+                        Step 2:{" "}
+                        {pageContent?.step2?.heading2 || `Identify your goals`}
+                      </h3>
+                      <p className="head-discrption d-none d-md-block">
+                        {pageContent?.step2?.step2Description ||
+                          `Click or tap on the areas of the face you’d like to
+                        include in your treatment options. Once you tap, choose
+                        the statement from the dropdown that most describes your
+                        perspective.`}
+                      </p>
+                      <p className="mobile-only">
+                        Select as many as you like, from multiple areas of the
+                        face.
+                      </p>
+                      <Row className="align-items-center mt-4">
+                        {/* <Row className="mt-4 abc"> */}
+                        <Col lg={6}>
+                          <div
+                            className="pinImage"
+                            style={{
+                              position: "relative",
+                              width: "550px",
+                              height: "auto",
+                            }}
+                          >
+                            <div className="face-division">
+                              {/* Upper Face */}
+                              <span
+                                className={`upper ${
+                                  actualSelectedImage?.dashedLinePositions
+                                    ?.upper
+                                    ? "active"
+                                    : ""
+                                }`}
+                                style={{
+                                  position: "absolute",
+                                  width: "100%",
+                                  height: `${
+                                    actualSelectedImage?.dashedLinePositions
+                                      ?.upper ?? 49
+                                  }%`, // Dynamic height from database
+                                  top: "0", // Start from the top
+                                  cursor: "pointer",
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  upperFace();
+                                }}
+                              ></span>
+
+                              {/* Mid Face */}
+                              {/* <span
+                                className={`mid ${
+                                  actualSelectedImage?.dashedLinePositions?.mid
+                                    ? "active"
+                                    : ""
+                                }`}
+                                style={{
+                                  position: "absolute",
+                                  width: "100%",
+                                  height: `${
+                                    actualSelectedImage?.dashedLinePositions
+                                      ?.mid -
+                                      actualSelectedImage?.dashedLinePositions
+                                        ?.upper ?? 29
+                                  }%`, // Dynamic mid part height
+                                  top: `${
+                                    actualSelectedImage?.dashedLinePositions
+                                      ?.upper ?? 49
+                                  }%`, // Start from upper section
+                                  cursor: "pointer",
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  midFace();
+                                }}
+                              ></span> */}
+
+                              <span
+                                className={`mid ${
+                                  actualSelectedImage?.dashedLinePositions?.mid
+                                    ? "active"
+                                    : ""
+                                }`}
+                                style={{
+                                  position: "absolute",
+                                  width: "100%",
+                                  height: `${
+                                    (actualSelectedImage?.dashedLinePositions
+                                      ?.mid ?? 66) -
+                                    (actualSelectedImage?.dashedLinePositions
+                                      ?.upper ?? 33)
+                                  }%`,
+                                  top: `${
+                                    actualSelectedImage?.dashedLinePositions
+                                      ?.upper ?? 33
+                                  }%`,
+                                  cursor: "pointer",
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+
+                                  // Get the bounding box of the mid section
+                                  const boundingBox =
+                                    e.target.getBoundingClientRect();
+                                  const clickY = e.clientY; // Click Y position in viewport
+
+                                  // Check if click is within the mid section range
+                                  const upperBoundary = boundingBox.top;
+                                  const lowerBoundary = boundingBox.bottom;
+
+                                  if (
+                                    clickY >= upperBoundary &&
+                                    clickY <= lowerBoundary
+                                  ) {
+                                    midFace();
+                                  }
+                                }}
+                              ></span>
+
+                              {/* Lower Face */}
+                              <span
+                                className={`lower ${
+                                  actualSelectedImage?.dashedLinePositions?.mid
+                                    ? "active"
+                                    : ""
+                                }`}
+                                style={{
+                                  position: "absolute",
+                                  width: "100%",
+                                  height: "auto", // Takes the remaining height
+                                  top: `${
+                                    actualSelectedImage?.dashedLinePositions
+                                      ?.mid ?? 78
+                                  }%`, // Start from mid section
+                                  bottom: "0", // Ensure it covers the remaining area
+                                  cursor: "pointer",
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  lowerFace();
+                                }}
+                              ></span>
+                            </div>
+                            <img
+                              src={selectedImage ? selectedImage : FaceIcon3}
+                              className="face-image"
+                              alt="face"
+                              style={{
+                                width: "100%",
+                                height: "auto",
+                                objectFit: "cover",
+                              }}
+                              loading="lazy"
+                            />
+                            {filteredParts
+                              .filter(
+                                (part) =>
+                                  part.imagePartType === selectedImagePart
+                              )
+                              .map((part, index) =>
+                                hasStaticKey ? (
+                                  <div
+                                    key={part._id || index}
+                                    onClick={() =>
+                                      handleDotClickWithHighlight(part)
+                                    }
+                                    className={`dot ${
+                                      selectedDotIndex === part.partName
+                                        ? `ripple-${selectedImagePart}`
+                                        : ""
+                                    }`}
+                                    style={{
+                                      top: `${part.coordinates?.y || 0}%`,
+                                      left: `${part.coordinates?.x || 0}%`,
+                                      transform: "translate(-50%, -50%)",
+                                    }}
+                                    title={part.partName}
+                                  />
+                                ) : null
+                              )}
+                          </div>
+                        </Col>
+                        <Col lg={6} className="accor-container">
+                          {/* {selectedPart.length === 0 ? ( */}
+                          {selectedImagePart.length === 0 ? (
+                            <div className="text-description">
+                              <ol>
+                                <li>
+                                  Click or tap on a specific area of the face to
+                                  add features to your treatment recommendation
+                                </li>
+                                <li>
+                                  Each “dot” you click on includes statements
+                                  about your concerns or goals
+                                </li>
+                                <li>
+                                  Select multiple dots to get your treatment
+                                  recommendation.
+                                </li>
+                                <li>
+                                  Submit your form for a call back, or book your
+                                  consultation right away.
+                                </li>
+                              </ol>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="d-none d-md-block">
+                                Select as many as you like, from multiple areas
+                                of the face.
+                              </p>
+                              {hasStaticKey && filteredParts.length > 0 ? (
+                                <Tabs
+                                  activeKey={selectedImagePart}
+                                  onSelect={handleTabSwitch}
+                                  className="mb-3"
+                                  id="uncontrolled-tab-example"
+                                >
+                                  {["upperFace", "midFace", "lowerFace"].map(
+                                    (tabKey) => (
+                                      <Tab
+                                        eventKey={tabKey}
+                                        title={tabKey
+                                          .replace(/([A-Z])/g, " $1")
+                                          .toUpperCase()}
+                                        key={tabKey}
+                                      >
+                                        {filteredParts
+                                          .filter(
+                                            (part) =>
+                                              part.imagePartType === tabKey
+                                          )
+                                          .map((part, index) => (
+                                            <div
+                                              key={part.partName}
+                                              style={{ marginBottom: "20px" }}
+                                            >
+                                              {/* Accordion Header */}
+                                              <div
+                                                className={`accor-title ${
+                                                  part.isOpen ? "active" : ""
+                                                }`}
+                                                onClick={() =>
+                                                  setFilteredParts(
+                                                    (prevParts) =>
+                                                      prevParts.map((p) =>
+                                                        p.partName ===
+                                                        part.partName
+                                                          ? {
+                                                              ...p,
+                                                              isOpen: !p.isOpen,
+                                                            }
+                                                          : p
+                                                      )
+                                                  )
+                                                }
+                                              >
+                                                <span>{part.partName}</span>
+                                                <span
+                                                  className="accor-icon"
+                                                  style={{
+                                                    transform: part.isOpen
+                                                      ? "rotate(180deg)"
+                                                      : "rotate(0deg)",
+                                                    transition:
+                                                      "transform 0.3s ease",
+                                                  }}
+                                                >
+                                                  <svg
+                                                    width="20"
+                                                    height="12"
+                                                    viewBox="0 0 24 14"
+                                                    fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                  >
+                                                    <path
+                                                      d="M22.4167 1.79199L12.0001 12.2087L1.58342 1.79199"
+                                                      stroke="#444"
+                                                      strokeWidth="2"
+                                                      strokeLinecap="round"
+                                                      strokeLinejoin="round"
+                                                    ></path>
+                                                  </svg>
+                                                </span>
+                                              </div>
+
+                                              {/* Accordion Content */}
+                                              {part.isOpen && (
+                                                <div
+                                                  style={{ margin: "20px 0px" }}
+                                                >
+                                                  {part.questions &&
+                                                  part.questions.length > 0 ? (
+                                                    part.questions.map(
+                                                      (question, qIndex) => (
+                                                        <div
+                                                          key={qIndex}
+                                                          className="question-type"
+                                                        >
+                                                          <input
+                                                            type="radio"
+                                                            style={{
+                                                              cursor: "pointer",
+                                                            }}
+                                                            id={`question-${index}-${qIndex}`}
+                                                            name={`question-${part.partName}`}
+                                                            value={
+                                                              question.text
+                                                            }
+                                                            checked={submitUserSelection.some(
+                                                              (item) =>
+                                                                item.partName ===
+                                                                  part.partName &&
+                                                                item.question ===
+                                                                  question.text
+                                                            )}
+                                                            onClick={() =>
+                                                              handleQuestionSelect(
+                                                                part.partName,
+                                                                question.text,
+                                                                question.packageIds
+                                                              )
+                                                            }
+                                                            onChange={() => {}}
+                                                          />
+                                                          <label
+                                                            htmlFor={`question-${index}-${qIndex}`}
+                                                            style={{
+                                                              marginLeft:
+                                                                "10px",
+                                                            }}
+                                                          >
+                                                            {question.text}
+                                                          </label>
+                                                        </div>
+                                                      )
+                                                    )
+                                                  ) : (
+                                                    <p>
+                                                      No questions available for
+                                                      this part.
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              )}
+                                            </div>
+                                          ))}
+                                      </Tab>
+                                    )
+                                  )}
+                                </Tabs>
+                              ) : (
+                                <Tabs
+                                  activeKey={selectedImagePart}
+                                  onSelect={handleTabSwitch}
+                                  className="mb-3"
+                                  id="uncontrolled-tab-example"
+                                >
+                                  {["upperFace", "midFace", "lowerFace"].map(
+                                    (tabKey) => (
+                                      <Tab
+                                        eventKey={tabKey}
+                                        title={tabKey
+                                          .replace(/([A-Z])/g, " $1")
+                                          .toUpperCase()}
+                                        key={tabKey}
+                                      >
+                                        {activeParts
+                                          .filter(
+                                            (part) =>
+                                              part.imagePartType === tabKey
+                                          )
+                                          .map((part, index) => (
+                                            <div
+                                              key={part.part}
+                                              style={{ marginBottom: "20px" }}
+                                            >
+                                              {/* Accordion Header */}
+                                              <div
+                                                className={`accor-title ${
+                                                  part.isOpen ? "active" : ""
+                                                }`}
+                                                onClick={() =>
+                                                  toggleDynamicPart(part.part)
+                                                }
+                                              >
+                                                <span>{part.part}</span>
+                                                <span
+                                                  className="accor-icon"
+                                                  style={{
+                                                    transform: part.isOpen
+                                                      ? "rotate(180deg)"
+                                                      : "rotate(0deg)",
+                                                    transition:
+                                                      "transform 0.3s ease",
+                                                  }}
+                                                >
+                                                  <svg
+                                                    width="20"
+                                                    height="12"
+                                                    viewBox="0 0 24 14"
+                                                    fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                  >
+                                                    <path
+                                                      d="M22.4167 1.79199L12.0001 12.2087L1.58342 1.79199"
+                                                      stroke="#444"
+                                                      strokeWidth="2"
+                                                      strokeLinecap="round"
+                                                      strokeLinejoin="round"
+                                                    ></path>
+                                                  </svg>
+                                                </span>
+                                              </div>
+
+                                              {/* Accordion Content */}
+                                              {part.isOpen && (
+                                                <div
+                                                  style={{ margin: "20px 0px" }}
+                                                >
+                                                  {part.question &&
+                                                  part.question.length > 0 ? (
+                                                    part.question.map(
+                                                      (question, qIndex) => (
+                                                        <div
+                                                          key={qIndex}
+                                                          className="question-type"
+                                                        >
+                                                          <input
+                                                            type="radio"
+                                                            style={{
+                                                              cursor: "pointer",
+                                                            }}
+                                                            id={`question-${index}-${qIndex}`}
+                                                            name={`question-${part.part}`}
+                                                            value={
+                                                              question.text
+                                                            }
+                                                            checked={submitUserSelection.some(
+                                                              (item) =>
+                                                                item.partName ===
+                                                                  part.part &&
+                                                                item.question ===
+                                                                  question.text
+                                                            )}
+                                                            onClick={() =>
+                                                              handleQuestionSelect(
+                                                                part.part,
+                                                                question.text,
+                                                                question.packageIds
+                                                              )
+                                                            }
+                                                            onChange={() => {}}
+                                                          />
+                                                          <label
+                                                            htmlFor={`question-${index}-${qIndex}`}
+                                                            style={{
+                                                              marginLeft:
+                                                                "10px",
+                                                            }}
+                                                          >
+                                                            {question.text}
+                                                          </label>
+                                                        </div>
+                                                      )
+                                                    )
+                                                  ) : (
+                                                    <p>
+                                                      No questions available for
+                                                      this part.
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              )}
+                                            </div>
+                                          ))}
+                                      </Tab>
+                                    )
+                                  )}
+                                </Tabs>
+                              )}
+                            </div>
+                          )}
+                        </Col>
+                      </Row>
+                      <div className="step-footer">
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => stepper && stepper.previous()}
+                          style={{
+                            background:
+                              pageContent?.buttonSettings?.buttonColor || "",
+                            "--button-hover-bg":
+                              pageContent?.buttonSettings?.buttonHoverColor ||
+                              "#947287",
+                          }}
+                        >
+                          <svg
+                            className="me-3"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
+                              stroke="white"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                          <span
+                            style={{
+                              color:
+                                pageContent?.buttonSettings?.buttonTextColor ||
+                                "",
+                            }}
+                          >
+                            GO BACK
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={submitSelectionForPackage}
+                          disabled={submitUserSelection.length <= 0}
+                          style={{
+                            background:
+                              pageContent?.buttonSettings?.buttonColor || "",
+                            "--button-hover-bg":
+                              pageContent?.buttonSettings?.buttonHoverColor ||
+                              "#947287",
+                          }}
+                        >
+                          <span
+                            style={{
+                              color:
+                                pageContent?.buttonSettings?.buttonTextColor ||
+                                "",
+                            }}
+                          >
+                            NEXT STEP
+                          </span>
+
+                          <svg
+                            className="ms-3"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
+                              stroke="white"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div id="test-l-3" className="content">
+                      <h3>
+                        Step 3:{" "}
+                        {pageContent?.step3?.heading2 ||
+                          `Treatment recommendation AND real life results`}
+                      </h3>
+                      <p
+                        className="color-primary head-discrption fw-600 mobile-dropGallery"
+                        style={{
+                          color:
+                            pageContent?.buttonSettings?.buttonColor ||
+                            "inherit",
+                        }}
+                      >
+                        See how we determine your recommendation and browse
+                        before and afters relevant to you
+                        <span
+                          className={`mobile-only ${toggleClass}`}
+                          onClick={handleToggle}
+                        >
+                          <svg
+                            width="20"
+                            height="12"
+                            viewBox="0 0 24 14"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M22.4167 1.79199L12.0001 12.2087L1.58342 1.79199"
+                              stroke="#AC8CA0"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </span>
+                      </p>
+
+                      <p
+                        className={`head-discrption ${
+                          isVisible ? `mob-show` : ""
+                        }`}
+                      >
+                        {pageContent?.step3?.step3Description ||
+                          `Based on your responses, we have a treatment package
+                        recommendation for you that could include a variety of
+                        treatments. You can also see real life before & afters
+                        of people just like you. The package will be further
+                        tailored by your practitioner in clinic, based on your
+                        aspirations, budget and history.`}
+                      </p>
+
+                      {/* <Row className="align-items-center mt-4"> */}
+                      <Row className="align-items-top-0 mt-4 thumb-slider">
+                        <Col
+                          md={6}
+                          className={`${isVisible ? `mob-show` : ""}`}
+                        >
+                          <Swiper
+                            style={{
+                              "--swiper-navigation-color": "#fff",
+                              "--swiper-pagination-color": "#fff",
+                            }}
+                            spaceBetween={10}
+                            navigation={true}
+                            thumbs={{ swiper: thumbsSwiper }}
+                            modules={[FreeMode, Navigation, Thumbs]}
+                            className="mySwiper2"
+                            breakpoints={{
+                              0: {
+                                slidesPerView: 1.2,
+                              },
+                              768: {
+                                slidesPerView: 1,
+                              },
+                              992: {
+                                slidesPerView: 1,
+                              },
+                              1240: {
+                                slidesPerView: 1,
+                              },
+                            }}
+                          >
+                            {currentPackage?.files?.map((file, index) => (
+                              <SwiperSlide key={file._id || index}>
+                                <img
+                                  src={file.path}
+                                  className="img-fluid"
+                                  alt={
+                                    file.originalName || `Slide ${index + 1}`
+                                  }
+                                />
+                              </SwiperSlide>
+                            ))}
+                          </Swiper>
+
+                          <Swiper
+                            onSwiper={setThumbsSwiper}
+                            spaceBetween={10}
+                            slidesPerView={4}
+                            freeMode={true}
+                            watchSlidesProgress={true}
+                            modules={[FreeMode, Navigation, Thumbs]}
+                            className="mySwiper mt-3"
+                          >
+                            {currentPackage?.files?.map((file, index) => (
+                              <SwiperSlide key={file._id || `thumb-${index}`}>
+                                <img
+                                  src={file.path}
+                                  className="img-fluid"
+                                  alt={
+                                    file.originalName ||
+                                    `Thumbnail ${index + 1}`
+                                  }
+                                />
+                              </SwiperSlide>
+                            ))}
+                          </Swiper>
+                        </Col>
+
+                        <Col md={6}>
+                          <h3>RECOMMENDED FOR YOU</h3>
+                          <h4>
+                            {currentPackage?.packageName ||
+                              "Rejuvenation Package"}
+                          </h4>
+                          <p>
+                            {currentPackage?.description ||
+                              `Lorem ipsum dolor
+                            sit amet, consectetur adipiscing elit, sed do
+                            eiusmod tempor incididunt ut labore et dolore magna
+                            aliqua. Ut enim ad minim veniam, quis nostrud
+                            exercitation ullamco laboris nisi ut aliquip ex ea
+                            commodo consequat. Duis aute irure dolor in
+                            reprehenderit in voluptate velit esse cillum dolore
+                            eu fugiat nulla pariatur. Excepteur sint occaecat
+                            cupidatat non proident, sunt in culpa qui officia
+                            deserunt mollit anim id est laborum.`}
+                          </p>
+                          {currentPackage?.includes?.length > 0 && (
+                            <>
+                              <h5>treatments in this package</h5>
+                              <span className="text-muted">
+                                (Depending on consultation)
+                              </span>
+                              <ul className="checkList">
+                                {currentPackage.includes.map((item, index) => (
+                                  <li key={index}>{item}</li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+
+                          <p className="mt-3">
+                            COSTS <br />
+                            {currentPackage?.amount || "$XX - $XX"}
+                          </p>
+                        </Col>
+                      </Row>
+                      <div className="step-footer">
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => stepper && stepper.previous()}
+                          style={{
+                            background:
+                              pageContent?.buttonSettings?.buttonColor || "",
+                            "--button-hover-bg":
+                              pageContent?.buttonSettings?.buttonHoverColor ||
+                              "#947287",
+                          }}
+                        >
+                          <svg
+                            className="me-3"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
+                              stroke="white"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                          <span
+                            style={{
+                              color:
+                                pageContent?.buttonSettings?.buttonTextColor ||
+                                "",
+                            }}
+                          >
+                            GO BACK
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => stepper && stepper.next()}
+                          style={{
+                            background:
+                              pageContent?.buttonSettings?.buttonColor || "",
+                            "--button-hover-bg":
+                              pageContent?.buttonSettings?.buttonHoverColor ||
+                              "#947287",
+                          }}
+                        >
+                          <span
+                            style={{
+                              color:
+                                pageContent?.buttonSettings?.buttonTextColor ||
+                                "",
+                            }}
+                          >
+                            NEXT STEP
+                          </span>
+                          <svg
+                            className="ms-3"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
+                              stroke="white"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div id="test-l-4" className="content">
+                      <h3>
+                        Step 4:{" "}
+                        {pageContent?.step4?.heading2 || `Get a call back`}
+                      </h3>
+                      <p className="head-discrption">
+                        {pageContent?.step4?.step4Description ||
+                          `Leave us your details so we can call you back and have a
+                        further consultation about your treatment package, and
+                        discuss booking you in for a consultation. Don’t worry,
+                        there’s no commitment, and our team are here to help.`}
+                      </p>
+
+                      <Form
+                        className="custom-form  mt-4"
+                        // onSubmit={handleSubmit}
+                      >
+                        {/* {Object.keys(errors).length > 0 && (
+                          <Alert variant="danger">
+                            <ul>
+                              {Object.values(errors).map((error, index) => (
+                                <li key={index}>{error}</li>
+                              ))}
+                            </ul>
+                          </Alert>
+                        )} */}
+                        {Object.values(errors).some((error) => error) && (
+                          <Alert variant="danger">
+                            <ul>
+                              {Object.values(errors)
+                                .filter((error) => error)
+                                .map((error, index) => (
+                                  <li key={index}>{error}</li>
+                                ))}
+                            </ul>
+                          </Alert>
+                        )}
+
+                        <Row className="align-items-start">
+                          <Col md="6">
+                            <Form.Label htmlFor="inlineFormInputGroup">
+                              Please provide your first name*
+                            </Form.Label>
+                            <InputGroup className="mb-4">
+                              <InputGroup.Text>
+                                <svg
+                                  width="20"
+                                  height="20"
+                                  viewBox="0 0 20 20"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <path
+                                    fill-rule="evenodd"
+                                    clip-rule="evenodd"
+                                    d="M11.9817 11.5996H8.01852C6.8521 11.6575 5.81868 12.37 5.34974 13.4396C4.78414 14.55 5.91294 15.5996 7.22574 15.5996H12.7745C14.0881 15.5996 15.2169 14.55 14.6505 13.4396C14.1816 12.37 13.1482 11.6575 11.9817 11.5996Z"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  />
+                                  <path
+                                    fill-rule="evenodd"
+                                    clip-rule="evenodd"
+                                    d="M12.3996 6.80039C12.3996 8.12587 11.3251 9.20039 9.99958 9.20039C8.67414 9.20039 7.59961 8.12587 7.59961 6.80039C7.59961 5.47491 8.67414 4.40039 9.99958 4.40039C10.6361 4.40039 11.2466 4.65325 11.6967 5.10333C12.1468 5.55342 12.3996 6.16387 12.3996 6.80039Z"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  />
+                                </svg>
+                              </InputGroup.Text>
+                              <Form.Control
+                                id="first-name"
+                                value={formData.firstName}
+                                onChange={handleFormDataChange}
+                                name="firstName"
+                                placeholder="First Name"
+                                isInvalid={errors.firstName}
+                              />
+                              <Form.Control.Feedback type="invalid">
+                                {errors.firstName}
+                              </Form.Control.Feedback>
+                            </InputGroup>
+                          </Col>
+                          <Col md="6">
+                            <Form.Label htmlFor="inlineFormInputGroup">
+                              Please provide your last name*
+                            </Form.Label>
+                            <InputGroup className="mb-4">
+                              <InputGroup.Text>
+                                <svg
+                                  width="20"
+                                  height="20"
+                                  viewBox="0 0 20 20"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <path
+                                    fill-rule="evenodd"
+                                    clip-rule="evenodd"
+                                    d="M11.9817 11.5996H8.01852C6.8521 11.6575 5.81868 12.37 5.34974 13.4396C4.78414 14.55 5.91294 15.5996 7.22574 15.5996H12.7745C14.0881 15.5996 15.2169 14.55 14.6505 13.4396C14.1816 12.37 13.1482 11.6575 11.9817 11.5996Z"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  />
+                                  <path
+                                    fill-rule="evenodd"
+                                    clip-rule="evenodd"
+                                    d="M12.3996 6.80039C12.3996 8.12587 11.3251 9.20039 9.99958 9.20039C8.67414 9.20039 7.59961 8.12587 7.59961 6.80039C7.59961 5.47491 8.67414 4.40039 9.99958 4.40039C10.6361 4.40039 11.2466 4.65325 11.6967 5.10333C12.1468 5.55342 12.3996 6.16387 12.3996 6.80039Z"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  />
+                                </svg>
+                              </InputGroup.Text>
+                              <Form.Control
+                                id="last-name"
+                                value={formData.lastName}
+                                onChange={handleFormDataChange}
+                                name="lastName"
+                                placeholder="Last Name"
+                                isInvalid={errors.lastName}
+                              />
+                              <Form.Control.Feedback type="invalid">
+                                {errors.lastName}
+                              </Form.Control.Feedback>
+                            </InputGroup>
+                          </Col>
+                          <Col md="6">
+                            <Form.Label htmlFor="phone">
+                              Phone Number*
+                            </Form.Label>
+                            <InputGroup className="mb-4">
+                              <Form.Control
+                                as={PhoneInput}
+                                country="au"
+                                enableSearch={true}
+                                placeholder="0000 - 000 - 000"
+                                // value={formData.phone}
+                                value={formData.phone || "+61"}
+                                name="phone"
+                                onChange={handlePhoneChange}
+                                className="form-control d-flex"
+                                id="phone"
+                                maxLength="16"
+                                isInvalid={errors.phone}
+                              />
+                              <Form.Control.Feedback type="invalid">
+                                {errors.phone}
+                              </Form.Control.Feedback>
+                            </InputGroup>
+                          </Col>
+                          <Col md="6">
+                            <Form.Label htmlFor="inlineFormInputGroup">
+                              Please provide your email address*
+                            </Form.Label>
+                            <InputGroup className="mb-4">
+                              <InputGroup.Text>
+                                <svg
+                                  width="21"
+                                  height="20"
+                                  viewBox="0 0 21 20"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <path
+                                    d="M16.3003 7.62305C16.3121 7.95421 16.5901 8.21311 16.9213 8.20132C17.2524 8.18953 17.5113 7.91151 17.4995 7.58035L16.3003 7.62305ZM13.4711 4.4017V5.0017C13.4778 5.0017 13.4845 5.00159 13.4912 5.00136L13.4711 4.4017ZM8.3287 4.4017L8.30866 5.00136C8.31534 5.00159 8.32202 5.0017 8.3287 5.0017V4.4017ZM4.30028 7.58035C4.28848 7.91151 4.54739 8.18953 4.87855 8.20132C5.20971 8.21311 5.48772 7.95421 5.49952 7.62305L4.30028 7.58035ZM17.4999 7.6017C17.4999 7.27033 17.2313 7.0017 16.8999 7.0017C16.5685 7.0017 16.2999 7.27033 16.2999 7.6017H17.4999ZM16.8999 12.4017L17.4995 12.423C17.4997 12.416 17.4999 12.4089 17.4999 12.4017H16.8999ZM13.4711 15.6017L13.4912 15.0021C13.4845 15.0018 13.4778 15.0017 13.4711 15.0017V15.6017ZM8.3287 15.6017V15.0017C8.32202 15.0017 8.31534 15.0018 8.30866 15.0021L8.3287 15.6017ZM4.8999 12.4017H4.2999C4.2999 12.4089 4.30003 12.416 4.30028 12.423L4.8999 12.4017ZM5.4999 7.6017C5.4999 7.27033 5.23127 7.0017 4.8999 7.0017C4.56853 7.0017 4.2999 7.27033 4.2999 7.6017H5.4999ZM17.2025 8.11978C17.4887 7.95263 17.5851 7.58519 17.418 7.29906C17.2509 7.01293 16.8834 6.91647 16.5973 7.08362L17.2025 8.11978ZM12.6887 10.0617L12.3861 9.54357L12.3811 9.54653L12.6887 10.0617ZM9.1111 10.0617L9.41878 9.54653L9.41374 9.54365L9.1111 10.0617ZM5.20254 7.08362C4.91641 6.91647 4.54896 7.01293 4.38182 7.29906C4.21468 7.58519 4.31113 7.95263 4.59726 8.11978L5.20254 7.08362ZM17.4995 7.58035C17.4226 5.4201 15.6115 3.72983 13.451 3.80203L13.4912 5.00136C14.9902 4.95126 16.2469 6.12411 16.3003 7.62305L17.4995 7.58035ZM13.4711 3.8017H8.3287V5.0017H13.4711V3.8017ZM8.34874 3.80203C6.18833 3.72983 4.3772 5.4201 4.30028 7.58035L5.49952 7.62305C5.5529 6.12411 6.8096 4.95126 8.30866 5.00136L8.34874 3.80203ZM16.2999 7.6017V12.4017H17.4999V7.6017H16.2999ZM16.3003 12.3804C16.2469 13.8793 14.9902 15.0521 13.4912 15.0021L13.451 16.2013C15.6115 16.2736 17.4226 14.5833 17.4995 12.423L16.3003 12.3804ZM13.4711 15.0017H8.3287V16.2017H13.4711V15.0017ZM8.30866 15.0021C6.8096 15.0521 5.55289 13.8793 5.49952 12.3804L4.30028 12.423C4.3772 14.5833 6.18833 16.2736 8.34874 16.2013L8.30866 15.0021ZM5.4999 12.4017V7.6017H4.2999V12.4017H5.4999ZM16.5973 7.08362L12.3861 9.54357L12.9913 10.5798L17.2025 8.11978L16.5973 7.08362ZM12.3811 9.54653C11.4688 10.0914 10.3311 10.0914 9.41878 9.54653L8.8035 10.5769C10.0947 11.348 11.7051 11.348 12.9963 10.5769L12.3811 9.54653ZM9.41374 9.54365L5.20254 7.08362L4.59726 8.11978L8.80846 10.5798L9.41374 9.54365Z"
+                                    fill="#050505"
+                                  />
+                                </svg>
+                              </InputGroup.Text>
+                              <Form.Control
+                                id="email"
+                                value={formData.email}
+                                onChange={handleFormDataChange}
+                                name="email"
+                                placeholder="Email"
+                                isInvalid={errors.email}
+                              />
+                              <Form.Control.Feedback type="invalid">
+                                {errors.email}
+                              </Form.Control.Feedback>
+                            </InputGroup>
+                          </Col>
+                          <Col md="6">
+                            <Form.Label htmlFor="inlineFormInputGroup">
+                              Please provide your age range*
+                            </Form.Label>
+                            <InputGroup className="mb-4">
+                              <InputGroup.Text>
+                                <svg
+                                  width="20"
+                                  height="20"
+                                  viewBox="0 0 20 20"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <path
+                                    d="M17 10C17 13.866 13.866 17 10 17C6.134 17 3 13.866 3 10C3 6.134 6.134 3 10 3C13.866 3 17 6.134 17 10Z"
+                                    stroke="#050505"
+                                  />
+                                  <path
+                                    d="M3 10H5.1"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                  />
+                                  <path
+                                    d="M14.9004 10H17.0004"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                  />
+                                  <path
+                                    d="M10 16.9994V14.8994"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                  />
+                                  <path
+                                    d="M10 5.1V3"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                  />
+                                  <path
+                                    d="M8.60059 10H10.0006H11.4006"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  />
+                                  <path
+                                    d="M10 11.3996V9.99961V8.59961"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  />
+                                </svg>
+                              </InputGroup.Text>
+                              <Form.Control
+                                as="select"
+                                value={formData.ageRange}
+                                onChange={handleFormDataChange}
+                                name="ageRange"
+                                isInvalid={errors.ageRange}
+                              >
+                                <option value="">Select Age Range</option>
+                                <option value="18-25">18-25</option>
+                                <option value="26-35">26-35</option>
+                                <option value="36-45">36-45</option>
+                                <option value="46-59">46-59</option>
+                                <option value="60+">60+</option>
+                              </Form.Control>
+                              <Form.Control.Feedback type="invalid">
+                                {errors.ageRange}
+                              </Form.Control.Feedback>
+                            </InputGroup>
+                          </Col>
+                          <Col md="6">
+                            <Form.Label htmlFor="inlineFormInputGroup">
+                              Have you had aesthetic treatment before?*
+                            </Form.Label>
+                            <Form.Group as={Row} className="mb-3">
+                              <Col sm={10}>
+                                <Form.Check
+                                  type="radio"
+                                  label="Yes"
+                                  name="hadAestheticTreatmentBefore"
+                                  id="hadAestheticTreatmentYes"
+                                  value="yes"
+                                  checked={
+                                    formData.hadAestheticTreatmentBefore ===
+                                    "yes"
+                                  }
+                                  onChange={handleFormDataChange}
+                                  isInvalid={errors.hadAestheticTreatmentBefore}
+                                />
+                                <Form.Check
+                                  type="radio"
+                                  label="No"
+                                  name="hadAestheticTreatmentBefore"
+                                  id="hadAestheticTreatmentNo"
+                                  value="no"
+                                  checked={
+                                    formData.hadAestheticTreatmentBefore ===
+                                    "no"
+                                  }
+                                  onChange={handleFormDataChange}
+                                  isInvalid={errors.hadAestheticTreatmentBefore}
+                                />
+                                <Form.Control.Feedback type="invalid">
+                                  {errors.hadAestheticTreatmentBefore}
+                                </Form.Control.Feedback>
+                              </Col>
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        <div className="step-footer last-step">
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={() => stepper && stepper.previous()}
+                            style={{
+                              background:
+                                pageContent?.buttonSettings?.buttonColor || "",
+                              "--button-hover-bg":
+                                pageContent?.buttonSettings?.buttonHoverColor ||
+                                "#947287",
+                            }}
+                          >
+                            <svg
+                              className="me-3"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
+                                stroke="white"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              />
+                            </svg>
+                            <span
+                              style={{
+                                color:
+                                  pageContent?.buttonSettings
+                                    ?.buttonTextColor || "",
+                              }}
+                            >
+                              GO BACK
+                            </span>
+                          </button>
+                          <div className="d-flex last-step-mob">
+                            <button
+                              type="submit"
+                              className="btn btn-primary me-3"
+                              style={{
+                                background:
+                                  pageContent?.buttonSettings?.buttonColor ||
+                                  "",
+                                "--button-hover-bg":
+                                  pageContent?.buttonSettings
+                                    ?.buttonHoverColor || "#947287",
+                              }}
+                              onClick={handleSubmit}
+                            >
+                              <span
+                                style={{
+                                  color:
+                                    pageContent?.buttonSettings
+                                      ?.buttonTextColor || "#FFFFFF",
+                                }}
+                              >
+                                SUBMIT
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              onClick={directBookConsultation}
+                              disabled={loading} // Disable the button when loading
+                              style={{
+                                background:
+                                  pageContent?.buttonSettings?.buttonColor ||
+                                  "",
+                                "--button-hover-bg":
+                                  pageContent?.buttonSettings
+                                    ?.buttonHoverColor || "#947287",
+                                cursor: loading ? "not-allowed" : "pointer",
+                                color:
+                                  pageContent?.buttonSettings
+                                    ?.buttonTextColor || "#FFFFFF",
+                              }}
+                            >
+                              {loading ? (
+                                <>
+                                  <span
+                                    className="spinner-border spinner-border-sm align-middle me-1"
+                                    role="status"
+                                    aria-hidden="true"
+                                  ></span>
+                                  Processing...
+                                </>
+                              ) : (
+                                <>
+                                  <span
+                                    style={{
+                                      color:
+                                        pageContent?.buttonSettings
+                                          ?.buttonTextColor || "#FFFFFF",
+                                    }}
+                                  >
+                                    BOOK CONSULTATION
+                                  </span>
+                                  <svg
+                                    className="ms-3"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                  >
+                                    <path
+                                      d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
+                                      stroke="white"
+                                      strokeWidth="1.5"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </Form>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </Col>
+          </Row>
+        </Container>
+      </section>
+      <Modal
+        show={modalShow1}
+        size="xl"
+        className="custom-popup"
+        aria-labelledby="contained-modal-title-vcenter"
+        centered
+      >
+        <Modal.Header
+          closeButton
+          onHide={() => setModalShow1(false)}
+        ></Modal.Header>
+        <div id="take-one">
+          <Modal.Body className="text-center">
+            <h4>take a photo</h4>
+            <div id="take-one">
+              <p>For best results, please follow the instructions below.</p>
+              <ul className="checkList instructions">
+                <li>
+                  Align your face to the on-screen guide, keeping it centered
+                  and level.
+                </li>
+                <li>
+                  Ensure even lighting on your face—avoid harsh shadows or
+                  direct sunlight.
+                </li>
+                <li>
+                  Remove glasses, hats, and hair that may cover your face.
+                </li>
+                <li>
+                  Keep a neutral expression and close your mouth naturally.
+                </li>
+                <li>Use a plain background and a clean camera lens.</li>
+              </ul>
+            </div>
+          </Modal.Body>
+          <Modal.Footer>
+            <div className="step-footer">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setModalShow1(false)}
+                style={{
+                  background: pageContent?.buttonSettings?.buttonColor || "",
+                  "--button-hover-bg":
+                    pageContent?.buttonSettings?.buttonHoverColor || "#947287",
+                }}
+              >
+                <svg
+                  className="me-3"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
+                    stroke="white"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{
+                  background: pageContent?.buttonSettings?.buttonColor || "",
+                  "--button-hover-bg":
+                    pageContent?.buttonSettings?.buttonHoverColor || "#947287",
+                }}
+                onClick={() => {
+                  setTakePhotoModal(true);
+                  setShowWebcam(true);
+                }}
+              >
+                PROCEED 
+                <svg
+                  className="ms-3"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
+                    stroke="white"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          </Modal.Footer>
+        </div>
+        <div id="take-two">
+          <Modal
+            show={takePhotoModal}
+            onHide={() => {
+              setTakePhotoModal(false);
+              setShowWebcam(false); 
+              setSelectedImage(null); 
+            }}
+            size="xl"
+            centered
+          >
+            <Modal.Header closeButton></Modal.Header>
+            <Modal.Body className="text-center">
+              <h4>Take a Photo</h4>
+              <p>Take a self-photo following the facial pattern below.</p>
+
+              {selectedImage && !hasStaticKey ? (
+                <img src={selectedImage} alt="Captured" className="img-fluid" />
+              ) : (
+                showWebcam && (
+                  <Webcam
+                    audio={false}
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    videoConstraints={{
+                      width: 550,
+                      height: 550,
+                      facingMode: "user",
+                    }}
+                    className="img-fluid"
+                  />
+                )
+              )}
+            </Modal.Body>
+
+            <Modal.Footer>
+              <div className="step-footer">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setModalShow1(false);
+                    setTakePhotoModal(false);
+                    setSelectedImage(null);
+                  }}
+                  style={{
+                    background: pageContent?.buttonSettings?.buttonColor || "",
+                    "--button-hover-bg":
+                      pageContent?.buttonSettings?.buttonHoverColor ||
+                      "#947287",
+                  }}
+                >
+                  <svg
+                    className="me-3"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
+                      stroke="white"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  Cancel
+                </button>
+
+                {selectedImage ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      style={{
+                        background:
+                          pageContent?.buttonSettings?.buttonColor || "",
+                        "--button-hover-bg":
+                          pageContent?.buttonSettings?.buttonHoverColor ||
+                          "#947287",
+                      }}
+                      onClick={() => {
+                        setSelectedImage(null);
+                        setHasStaticKey(true);
+                        setShowWebcam(true);
+                      }}
+                    >
+                      Retake
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      style={{
+                        background:
+                          pageContent?.buttonSettings?.buttonColor || "",
+                        "--button-hover-bg":
+                          pageContent?.buttonSettings?.buttonHoverColor ||
+                          "#947287",
+                      }}
+                      onClick={() => {
+                        if (stepper) stepper.next(); 
+                        submitImage(); 
+                      }}
+                      
+                    >
+                      Submit
+                      <svg
+                        className="ms-3"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
+                          stroke="white"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  </>
+                ) : (
+                  showWebcam && (
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={captureImage}
+                      style={{
+                        background:
+                          pageContent?.buttonSettings?.buttonColor || "",
+                        "--button-hover-bg":
+                          pageContent?.buttonSettings?.buttonHoverColor ||
+                          "#947287",
+                      }}
+                    >
+                      Take Photo
+                      <svg
+                        className="ms-3"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M12 16C13.6569 16 15 14.6569 15 13C15 11.3431 13.6569 10 12 10C10.3431 10 9 11.3431 9 13C9 14.6569 10.3431 16 12 16Z"
+                          stroke="#050505"
+                          strokeWidth="1.3"
+                        />
+                        <path
+                          d="M1 13.5151C1 10.1104 1 8.40801 1.83224 7.18511C2.19253 6.65571 2.6555 6.20116 3.19471 5.84742C3.99506 5.32237 4.99703 5.1347 6.53111 5.06762C7.26317 5.06762 7.89347 4.52298 8.03703 3.81818C8.25239 2.76099 9.19783 2 10.2959 2H13.9263C15.0243 2 15.9698 2.76099 16.1852 3.81818C16.3288 4.52298 16.959 5.06762 17.6911 5.06762C19.2252 5.1347 20.2271 5.32237 21.0276 5.84742C21.5667 6.20116 22.0297 6.65571 22.39 7.18511C23.2222 8.40801 23.2222 10.1104 23.2222 13.5151C23.2222 16.9199 23.2222 18.6223 22.39 19.8452C22.0297 20.3746 21.5667 20.8291 21.0276 21.1829C19.782 22 18.0481 22 14.5802 22H9.64198C6.17417 22 4.44027 22 3.19471 21.1829C2.6555 20.8291 2.19253 20.3746 1.83224 19.8452C1.59718 19.4998 1.42851 19.1161 1.30748 18.6667"
+                          stroke="#050505"
+                          strokeWidth="1.3"
+                          strokeLinecap="round"
+                        />
+                        <path
+                          d="M19 10H18"
+                          stroke="#050505"
+                          strokeWidth="1.3"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </button>
+                  )
+                )}
+              </div>
+            </Modal.Footer>
+          </Modal>
+        </div>
+      </Modal>
+    </>
+  );
+};
+
+export default Face;

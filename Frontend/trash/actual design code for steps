@@ -1,0 +1,1146 @@
+import React, { useEffect, useState } from "react";
+import { FreeMode, Navigation, Thumbs } from "swiper/modules";
+import Modal from "react-bootstrap/Modal";
+import Form from "react-bootstrap/Form";
+import InputGroup from "react-bootstrap/InputGroup";
+import "swiper/css";
+import "bs-stepper/dist/css/bs-stepper.min.css";
+import Stepper from "bs-stepper";
+import { Swiper, SwiperSlide } from "swiper/react";
+import "./Body.css";
+import { Button, Col, Container, Row } from "react-bootstrap";
+import "react-phone-number-input/style.css";
+import PhoneInput from "react-phone-number-input";
+import FaceIcon1 from "../../../Assets/images/face-icon1.png";
+import FaceIcon2 from "../../../Assets/images/face-icon2.png";
+import FaceIcon3 from "../../../Assets/images/face-icon3.png";
+import FaceIcon4 from "../../../Assets/images/face-icon4.png";
+import FaceIcon5 from "../../../Assets/images/face-icon5.png";
+import FaceIcon6 from "../../../Assets/images/face-icon6.png";
+import TreatmentOption from "../../../Assets/images/treatment-option.png";
+import BeforeAF1 from "../../../Assets/images/bef-af1.png";
+import FacePattern from "../../../Assets/images/face-pattern.png";
+import FacePatternDemo from "../../../Assets/images/face-pattern-demo.png";
+const Body = () => {
+  const [value, setValue] = useState();
+  const [stepper, setStepper] = useState(null);
+  const [name, setName] = useState("React");
+  const [thumbsSwiper, setThumbsSwiper] = useState(null);
+  const [modalShow, setModalShow] = React.useState(false);
+  const [modalShow1, setModalShow1] = React.useState(false);
+
+
+  useEffect(() => {
+    const stepperInstance = new Stepper(document.querySelector("#stepper1"), {
+      linear: false,
+      animation: true,
+    });
+    setStepper(stepperInstance);
+  }, []);
+
+  const onSubmit = (e) => {
+    e.preventDefault();
+  };
+
+  return (
+    <>
+      <section className="face-stapper">
+        <Container>
+          <Row>
+            <Col>
+              <h2>Personalised treatment options in 2 minutes</h2>
+              <div id="stepper1" className="bs-stepper">
+                <div className="bs-stepper-header">
+                  <div className="step" data-target="#test-l-1">
+                    <button className="step-trigger">
+                      <span className="bs-stepper-circle">
+                        STEP
+                        <br /> 1
+                      </span>
+                    </button>
+                  </div>
+                  {/* <div className="line"></div> */}
+                  <div className="step" data-target="#test-l-2">
+                    <button className="step-trigger">
+                      <span className="bs-stepper-circle">
+                        STEP <br />2
+                      </span>
+                    </button>
+                  </div>
+                  {/* <div className="line"></div> */}
+                  <div className="step" data-target="#test-l-3">
+                    <button className="step-trigger">
+                      <span className="bs-stepper-circle">
+                        STEP
+                        <br /> 3
+                      </span>
+                    </button>
+                  </div>
+                  {/* <div className="line"></div> */}
+                  <div className="step" data-target="#test-l-4">
+                    <button className="step-trigger">
+                      <span className="bs-stepper-circle">
+                        STEP
+                        <br /> 4
+                      </span>
+                    </button>
+                  </div>
+                </div>
+                <div className="bs-stepper-content">
+                  <form onSubmit={onSubmit}>
+                    <div id="test-l-1" className="content">
+                      <h3>Step 1: Choose or upload an image</h3>
+                      <p className="head-discrption">
+                        You’ll be using this image to identify the areas you’d
+                        like to address or enhance, so it’s useful to use an
+                        image that reminds you of your own face (or your own
+                        face!).
+                      </p>
+                      <div className="swiper-container  mt-4">
+                        {/* Custom navigation buttons */}
+                        <button className="swiper-button-prev">
+                          <svg
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
+                              stroke="white"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                        <button className="swiper-button-next">
+                          <svg
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
+                              stroke="white"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                        <Swiper
+                          modules={[Navigation]}
+                          navigation={{
+                            nextEl: ".swiper-button-next",
+                            prevEl: ".swiper-button-prev",
+                          }}
+                          breakpoints={{
+                            // When the screen width is >= 640px
+                            0: {
+                              slidesPerView: 1,
+                            },
+                            // When the screen width is >= 768px
+                            768: {
+                              slidesPerView: 2,
+                            },
+                            992: {
+                              slidesPerView: 3,
+                            },
+                            // When the screen width is >= 1024px
+                            1240: {
+                              slidesPerView: 4,
+                            },
+                          }}
+                          spaceBetween={20}
+                          slidesPerView={4}
+                          pagination={{ clickable: true }}
+                          // onSlideChange={() => console.log("slide change")}
+                          // onSwiper={(swiper) => console.log(swiper)}
+                        >
+                          <SwiperSlide>
+                            <img
+                              src={FaceIcon1}
+                              className="img-fluid"
+                              alt="face"
+                            />
+                          </SwiperSlide>
+                          <SwiperSlide>
+                            <img
+                              src={FaceIcon2}
+                              className="img-fluid"
+                              alt="face"
+                            />
+                          </SwiperSlide>
+                          <SwiperSlide>
+                            <img
+                              src={FaceIcon3}
+                              className="img-fluid"
+                              alt="face"
+                            />
+                          </SwiperSlide>
+                          <SwiperSlide>
+                            <img
+                              src={FaceIcon4}
+                              className="img-fluid"
+                              alt="face"
+                            />
+                          </SwiperSlide>
+                          <SwiperSlide>
+                            <img
+                              src={FaceIcon5}
+                              className="img-fluid"
+                              alt="face"
+                            />
+                          </SwiperSlide>
+                          <SwiperSlide>
+                            <img
+                              src={FaceIcon6}
+                              className="img-fluid"
+                              alt="face"
+                            />
+                          </SwiperSlide>
+                        </Swiper>
+                      </div>
+                      <div className="step-footer">
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => setModalShow(true)}
+                        >
+                          {" "}
+                          UPLOAD AN IMAGE
+                          <svg
+                            className="ms-3"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M15 21H9C6.17157 21 4.75736 21 3.87868 20.1213C3 19.2426 3 17.8284 3 15M21 15C21 17.8284 21 19.2426 20.1213 20.1213C19.8215 20.4211 19.4594 20.6186 19 20.7487"
+                              stroke="#050505"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                            <path
+                              d="M12 16V3M12 3L16 7.375M12 3L8 7.375"
+                              stroke="#050505"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => setModalShow1(true)}
+                        >
+                          {" "}
+                          TAKE A PHOTO
+                          <svg
+                            className="ms-3"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M12 16C13.6569 16 15 14.6569 15 13C15 11.3431 13.6569 10 12 10C10.3431 10 9 11.3431 9 13C9 14.6569 10.3431 16 12 16Z"
+                              stroke="#050505"
+                              stroke-width="1.3"
+                            />
+                            <path
+                              d="M1 13.5151C1 10.1104 1 8.40801 1.83224 7.18511C2.19253 6.65571 2.6555 6.20116 3.19471 5.84742C3.99506 5.32237 4.99703 5.1347 6.53111 5.06762C7.26317 5.06762 7.89347 4.52298 8.03703 3.81818C8.25239 2.76099 9.19783 2 10.2959 2H13.9263C15.0243 2 15.9698 2.76099 16.1852 3.81818C16.3288 4.52298 16.959 5.06762 17.6911 5.06762C19.2252 5.1347 20.2271 5.32237 21.0276 5.84742C21.5667 6.20116 22.0297 6.65571 22.39 7.18511C23.2222 8.40801 23.2222 10.1104 23.2222 13.5151C23.2222 16.9199 23.2222 18.6223 22.39 19.8452C22.0297 20.3746 21.5667 20.8291 21.0276 21.1829C19.782 22 18.0481 22 14.5802 22H9.64198C6.17417 22 4.44027 22 3.19471 21.1829C2.6555 20.8291 2.19253 20.3746 1.83224 19.8452C1.59718 19.4998 1.42851 19.1161 1.30748 18.6667"
+                              stroke="#050505"
+                              stroke-width="1.3"
+                              stroke-linecap="round"
+                            />
+                            <path
+                              d="M19 10H18"
+                              stroke="#050505"
+                              stroke-width="1.3"
+                              stroke-linecap="round"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => stepper && stepper.next()}
+                        >
+                          Next
+                          <svg
+                            className="ms-3"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
+                              stroke="white"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div id="test-l-2" className="content">
+                      <h3>Step 2: Identify your goals</h3>
+                      <p className="head-discrption">
+                        Click or tap on the areas of the face you’d like to
+                        include in your treatment options. Once you tap, choose
+                        the statement from the dropdown that most describes your
+                        perspective.
+                      </p>
+                      <Row className="align-items-center mt-4">
+                        <Col md={6}>
+                          <img
+                            src={TreatmentOption}
+                            className="img-fluid"
+                            alt="face"
+                          />
+                        </Col>
+                        <Col md={6}>
+                          <ol>
+                            <li>
+                              Click or tap on a specific area of the face to add
+                              features to your treatment recommendation
+                            </li>
+                            <li>
+                              Each “dot” you click on includes statements about
+                              your concerns or goals
+                            </li>
+                            <li>
+                              Select multiple statements to get your treatment
+                              recommendation.
+                            </li>
+                            <li>
+                              Submit your form for a call back, or book your
+                              consultation right away.
+                            </li>
+                          </ol>
+                        </Col>
+                      </Row>
+                      <div className="step-footer">
+                        <button type="button" className="btn btn-primary">
+                          <svg
+                            className="me-3"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
+                              stroke="white"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                          GO BACK
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => stepper && stepper.next()}
+                        >
+                          Next
+                          <svg
+                            className="ms-3"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
+                              stroke="white"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div id="test-l-3" className="content">
+                      <h3>
+                        Step 3: Treatment recommendation AND real life results
+                      </h3>
+                      <p className="color-primary head-discrption fw-600">
+                        See how we determine your recommendation and browse
+                        before and afters relevant to you
+                      </p>
+                      <p className="head-discrption">
+                        Based on your responses, we have a treatment package
+                        recommendation for you that could include a variety of
+                        treatments. You can also see real life before & afters
+                        of people just like you. The package will be further
+                        tailored by your practitioner in clinic, based on your
+                        aspirations, budget and history.
+                      </p>
+                      <Row className="align-items-center mt-4">
+                        <Col md={6}>
+                          <Swiper
+                            style={{
+                              "--swiper-navigation-color": "#fff",
+                              "--swiper-pagination-color": "#fff",
+                            }}
+                            spaceBetween={10}
+                            navigation={true}
+                            thumbs={{ swiper: thumbsSwiper }}
+                            modules={[FreeMode, Navigation, Thumbs]}
+                            className="mySwiper2"
+                          >
+                            <SwiperSlide>
+                              <img
+                                src={BeforeAF1}
+                                className="img-fluid"
+                                alt="image"
+                              />
+                            </SwiperSlide>
+                            <SwiperSlide>
+                              <img
+                                src={BeforeAF1}
+                                className="img-fluid"
+                                alt="image"
+                              />
+                            </SwiperSlide>
+                            <SwiperSlide>
+                              <img
+                                src={BeforeAF1}
+                                className="img-fluid"
+                                alt="image"
+                              />
+                            </SwiperSlide>
+                            <SwiperSlide>
+                              <img
+                                src={BeforeAF1}
+                                className="img-fluid"
+                                alt="image"
+                              />
+                            </SwiperSlide>
+                          </Swiper>
+                          <Swiper
+                            onSwiper={setThumbsSwiper}
+                            spaceBetween={10}
+                            slidesPerView={4}
+                            freeMode={true}
+                            watchSlidesProgress={true}
+                            modules={[FreeMode, Navigation, Thumbs]}
+                            className="mySwiper mt-3"
+                          >
+                            <SwiperSlide>
+                              <img
+                                src={BeforeAF1}
+                                className="img-fluid"
+                                alt="image"
+                              />
+                            </SwiperSlide>
+                            <SwiperSlide>
+                              <img
+                                src={BeforeAF1}
+                                className="img-fluid"
+                                alt="image"
+                              />
+                            </SwiperSlide>
+                            <SwiperSlide>
+                              <img
+                                src={BeforeAF1}
+                                className="img-fluid"
+                                alt="image"
+                              />
+                            </SwiperSlide>
+                            <SwiperSlide>
+                              <img
+                                src={BeforeAF1}
+                                className="img-fluid"
+                                alt="image"
+                              />
+                            </SwiperSlide>
+                            <SwiperSlide>
+                              <img
+                                src={BeforeAF1}
+                                className="img-fluid"
+                                alt="image"
+                              />
+                            </SwiperSlide>
+                            <SwiperSlide>
+                              <img
+                                src={BeforeAF1}
+                                className="img-fluid"
+                                alt="image"
+                              />
+                            </SwiperSlide>
+                          </Swiper>
+                        </Col>
+                        <Col md={6}>
+                          <h3>RECOMMENDED FOR YOU</h3>
+                          <h4>Rejuvenation Package</h4>
+                          <p>
+                            Lorem ipsum dolor sit amet, consectetur adipiscing
+                            elit, sed do eiusmod tempor incididunt ut labore et
+                            dolore magna aliqua. Ut enim ad minim veniam, quis
+                            nostrud exercitation ullamco laboris nisi ut aliquip
+                            ex ea commodo consequat. Duis aute irure dolor in
+                            reprehenderit in voluptate velit esse cillum dolore
+                            eu fugiat nulla pariatur. Excepteur sint occaecat
+                            cupidatat non proident, sunt in culpa qui officia
+                            deserunt mollit anim id est laborum.
+                          </p>
+                          <h5>treatments in this package</h5>
+                          <span className="text-muted">
+                            (Depending on consultation)
+                          </span>
+                          <ul className="checkList">
+                            <li>Anti-wrinkle injections</li>
+                            <li>Dermal fillers</li>
+                            <li>Skin boosters</li>
+                            <li>Coolsculpting</li>
+                            <li>Dermal therapies</li>
+                          </ul>
+                          <p className="mt-3">
+                            COSTS <br />
+                            $XX - $XX
+                          </p>
+                        </Col>
+                      </Row>
+                      <div className="step-footer">
+                        <button type="button" className="btn btn-primary">
+                          <svg
+                            className="me-3"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
+                              stroke="white"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                          GO BACK
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => stepper && stepper.next()}
+                        >
+                          Next
+                          <svg
+                            className="ms-3"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
+                              stroke="white"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div id="test-l-4" className="content">
+                      <h3>Step 4: Get a call back</h3>
+                      <p className="head-discrption">
+                        Leave us your details so we can call you back and have a
+                        further consultation about your treatment package, and
+                        discuss booking you in for a consultation. Don’t worry,
+                        there’s no commitment, and our team are here to help.
+                      </p>
+
+                      <Form className="custom-form  mt-4">
+                        <Row className="align-items-center">
+                          <Col md="6">
+                            <Form.Label htmlFor="inlineFormInputGroup">
+                              Please provide your first name*
+                            </Form.Label>
+                            <InputGroup className="mb-4">
+                              <InputGroup.Text>
+                                <svg
+                                  width="20"
+                                  height="20"
+                                  viewBox="0 0 20 20"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <path
+                                    fill-rule="evenodd"
+                                    clip-rule="evenodd"
+                                    d="M11.9817 11.5996H8.01852C6.8521 11.6575 5.81868 12.37 5.34974 13.4396C4.78414 14.55 5.91294 15.5996 7.22574 15.5996H12.7745C14.0881 15.5996 15.2169 14.55 14.6505 13.4396C14.1816 12.37 13.1482 11.6575 11.9817 11.5996Z"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  />
+                                  <path
+                                    fill-rule="evenodd"
+                                    clip-rule="evenodd"
+                                    d="M12.3996 6.80039C12.3996 8.12587 11.3251 9.20039 9.99958 9.20039C8.67414 9.20039 7.59961 8.12587 7.59961 6.80039C7.59961 5.47491 8.67414 4.40039 9.99958 4.40039C10.6361 4.40039 11.2466 4.65325 11.6967 5.10333C12.1468 5.55342 12.3996 6.16387 12.3996 6.80039Z"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  />
+                                </svg>
+                              </InputGroup.Text>
+                              <Form.Control
+                                id="inlineFormInputGroup"
+                                placeholder="First Name"
+                              />
+                            </InputGroup>
+                          </Col>
+                          <Col md="6">
+                            <Form.Label htmlFor="inlineFormInputGroup">
+                              Please provide your last name*
+                            </Form.Label>
+                            <InputGroup className="mb-4">
+                              <InputGroup.Text>
+                                <svg
+                                  width="20"
+                                  height="20"
+                                  viewBox="0 0 20 20"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <path
+                                    fill-rule="evenodd"
+                                    clip-rule="evenodd"
+                                    d="M11.9817 11.5996H8.01852C6.8521 11.6575 5.81868 12.37 5.34974 13.4396C4.78414 14.55 5.91294 15.5996 7.22574 15.5996H12.7745C14.0881 15.5996 15.2169 14.55 14.6505 13.4396C14.1816 12.37 13.1482 11.6575 11.9817 11.5996Z"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  />
+                                  <path
+                                    fill-rule="evenodd"
+                                    clip-rule="evenodd"
+                                    d="M12.3996 6.80039C12.3996 8.12587 11.3251 9.20039 9.99958 9.20039C8.67414 9.20039 7.59961 8.12587 7.59961 6.80039C7.59961 5.47491 8.67414 4.40039 9.99958 4.40039C10.6361 4.40039 11.2466 4.65325 11.6967 5.10333C12.1468 5.55342 12.3996 6.16387 12.3996 6.80039Z"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  />
+                                </svg>
+                              </InputGroup.Text>
+                              <Form.Control
+                                id="inlineFormInputGroup"
+                                placeholder="Last Name"
+                              />
+                            </InputGroup>
+                          </Col>
+                          <Col md="6">
+                            <Form.Label htmlFor="inlineFormInputGroup">
+                              Please provide your phone number*
+                            </Form.Label>
+                            <InputGroup className="mb-4">
+                              <PhoneInput
+                                placeholder="0000 - 000 - 000"
+                                value={value}
+                                onChange={setValue}
+                                className="form-control d-flex"
+                              />
+                            </InputGroup>
+                          </Col>
+                          <Col md="6">
+                            <Form.Label htmlFor="inlineFormInputGroup">
+                              Please provide your email address*
+                            </Form.Label>
+                            <InputGroup className="mb-4">
+                              <InputGroup.Text>
+                                <svg
+                                  width="21"
+                                  height="20"
+                                  viewBox="0 0 21 20"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <path
+                                    d="M16.3003 7.62305C16.3121 7.95421 16.5901 8.21311 16.9213 8.20132C17.2524 8.18953 17.5113 7.91151 17.4995 7.58035L16.3003 7.62305ZM13.4711 4.4017V5.0017C13.4778 5.0017 13.4845 5.00159 13.4912 5.00136L13.4711 4.4017ZM8.3287 4.4017L8.30866 5.00136C8.31534 5.00159 8.32202 5.0017 8.3287 5.0017V4.4017ZM4.30028 7.58035C4.28848 7.91151 4.54739 8.18953 4.87855 8.20132C5.20971 8.21311 5.48772 7.95421 5.49952 7.62305L4.30028 7.58035ZM17.4999 7.6017C17.4999 7.27033 17.2313 7.0017 16.8999 7.0017C16.5685 7.0017 16.2999 7.27033 16.2999 7.6017H17.4999ZM16.8999 12.4017L17.4995 12.423C17.4997 12.416 17.4999 12.4089 17.4999 12.4017H16.8999ZM13.4711 15.6017L13.4912 15.0021C13.4845 15.0018 13.4778 15.0017 13.4711 15.0017V15.6017ZM8.3287 15.6017V15.0017C8.32202 15.0017 8.31534 15.0018 8.30866 15.0021L8.3287 15.6017ZM4.8999 12.4017H4.2999C4.2999 12.4089 4.30003 12.416 4.30028 12.423L4.8999 12.4017ZM5.4999 7.6017C5.4999 7.27033 5.23127 7.0017 4.8999 7.0017C4.56853 7.0017 4.2999 7.27033 4.2999 7.6017H5.4999ZM17.2025 8.11978C17.4887 7.95263 17.5851 7.58519 17.418 7.29906C17.2509 7.01293 16.8834 6.91647 16.5973 7.08362L17.2025 8.11978ZM12.6887 10.0617L12.3861 9.54357L12.3811 9.54653L12.6887 10.0617ZM9.1111 10.0617L9.41878 9.54653L9.41374 9.54365L9.1111 10.0617ZM5.20254 7.08362C4.91641 6.91647 4.54896 7.01293 4.38182 7.29906C4.21468 7.58519 4.31113 7.95263 4.59726 8.11978L5.20254 7.08362ZM17.4995 7.58035C17.4226 5.4201 15.6115 3.72983 13.451 3.80203L13.4912 5.00136C14.9902 4.95126 16.2469 6.12411 16.3003 7.62305L17.4995 7.58035ZM13.4711 3.8017H8.3287V5.0017H13.4711V3.8017ZM8.34874 3.80203C6.18833 3.72983 4.3772 5.4201 4.30028 7.58035L5.49952 7.62305C5.5529 6.12411 6.8096 4.95126 8.30866 5.00136L8.34874 3.80203ZM16.2999 7.6017V12.4017H17.4999V7.6017H16.2999ZM16.3003 12.3804C16.2469 13.8793 14.9902 15.0521 13.4912 15.0021L13.451 16.2013C15.6115 16.2736 17.4226 14.5833 17.4995 12.423L16.3003 12.3804ZM13.4711 15.0017H8.3287V16.2017H13.4711V15.0017ZM8.30866 15.0021C6.8096 15.0521 5.55289 13.8793 5.49952 12.3804L4.30028 12.423C4.3772 14.5833 6.18833 16.2736 8.34874 16.2013L8.30866 15.0021ZM5.4999 12.4017V7.6017H4.2999V12.4017H5.4999ZM16.5973 7.08362L12.3861 9.54357L12.9913 10.5798L17.2025 8.11978L16.5973 7.08362ZM12.3811 9.54653C11.4688 10.0914 10.3311 10.0914 9.41878 9.54653L8.8035 10.5769C10.0947 11.348 11.7051 11.348 12.9963 10.5769L12.3811 9.54653ZM9.41374 9.54365L5.20254 7.08362L4.59726 8.11978L8.80846 10.5798L9.41374 9.54365Z"
+                                    fill="#050505"
+                                  />
+                                </svg>
+                              </InputGroup.Text>
+                              <Form.Control
+                                id="inlineFormInputGroup"
+                                placeholder="Email Address"
+                              />
+                            </InputGroup>
+                          </Col>
+                          <Col md="6">
+                            <Form.Label htmlFor="inlineFormInputGroup">
+                              Please provide your age range*
+                            </Form.Label>
+                            <InputGroup className="mb-4">
+                              <InputGroup.Text>
+                                <svg
+                                  width="20"
+                                  height="20"
+                                  viewBox="0 0 20 20"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <path
+                                    d="M17 10C17 13.866 13.866 17 10 17C6.134 17 3 13.866 3 10C3 6.134 6.134 3 10 3C13.866 3 17 6.134 17 10Z"
+                                    stroke="#050505"
+                                  />
+                                  <path
+                                    d="M3 10H5.1"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                  />
+                                  <path
+                                    d="M14.9004 10H17.0004"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                  />
+                                  <path
+                                    d="M10 16.9994V14.8994"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                  />
+                                  <path
+                                    d="M10 5.1V3"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                  />
+                                  <path
+                                    d="M8.60059 10H10.0006H11.4006"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  />
+                                  <path
+                                    d="M10 11.3996V9.99961V8.59961"
+                                    stroke="#050505"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  />
+                                </svg>
+                              </InputGroup.Text>
+                              <Form.Select
+                                aria-label="Age Range"
+                                className="form-control"
+                                readOnly
+                              >
+                                <option>Open this select menu</option>
+                                <option value="1" selected>
+                                  25 - 35
+                                </option>
+                                <option value="2">25 - 35</option>
+                                <option value="3">25 - 35</option>
+                              </Form.Select>
+                            </InputGroup>
+                          </Col>
+                          <Col md="6">
+                            <Form.Label htmlFor="inlineFormInputGroup">
+                              Have you had aesthetic treatment before?*
+                            </Form.Label>
+                            <Form.Group as={Row} className="mb-3">
+                              <Col sm={10}>
+                                <Form.Check
+                                  type="radio"
+                                  label="Yes"
+                                  name="formHorizontalRadios"
+                                  id="formHorizontalRadios1"
+                                />
+                                <Form.Check
+                                  type="radio"
+                                  label="No"
+                                  name="formHorizontalRadios"
+                                  id="formHorizontalRadios2"
+                                />
+                              </Col>
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        <div className="step-footer">
+                          <button type="button" className="btn btn-primary">
+                            <svg
+                              className="me-3"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
+                                stroke="white"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              />
+                            </svg>
+                            GO BACK
+                          </button>
+                          <button type="submit" className="btn btn-primary">
+                            Submit
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={() => stepper && stepper.next()}
+                          >
+                            BOOK CONSULTATION
+                            <svg
+                              className="ms-3"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
+                                stroke="white"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </Form>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </Col>
+          </Row>
+        </Container>
+      </section>
+
+      {/* Upload a photo Modal */}
+
+      <Modal
+        show={modalShow}
+        size="xl"
+        className="custom-popup"
+        aria-labelledby="contained-modal-title-vcenter"
+        centered
+      >
+        <Modal.Header
+          closeButton
+          onHide={() => setModalShow(false)}
+        ></Modal.Header>
+        <Modal.Body className="text-center">
+          <h4>Upload a photo</h4>
+          <p>Align your photo to the pattern below.</p>
+          <img src={FacePattern} className="img-fluid" />
+        </Modal.Body>
+        <Modal.Footer>
+          <div className="step-footer">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setModalShow(false)}
+            >
+              <svg
+                className="me-3"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
+                  stroke="white"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              GO BACK
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => stepper && stepper.next()}
+            >
+              Done, UPLOAD
+              <svg
+                className="ms-3"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M15 21H9C6.17157 21 4.75736 21 3.87868 20.1213C3 19.2426 3 17.8284 3 15M21 15C21 17.8284 21 19.2426 20.1213 20.1213C19.8215 20.4211 19.4594 20.6186 19 20.7487"
+                  stroke="#050505"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M12 16V3M12 3L16 7.375M12 3L8 7.375"
+                  stroke="#050505"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+        </Modal.Footer>
+      </Modal>
+
+      {/* take a photo Modal */}
+
+      <Modal
+        show={modalShow1}
+        size="xl"
+        className="custom-popup"
+        aria-labelledby="contained-modal-title-vcenter"
+        centered
+      >
+        <Modal.Header
+          closeButton
+          onHide={() => setModalShow1(false)}
+        ></Modal.Header>
+        <div id="take-one">
+          <Modal.Body className="text-center">
+            <h4>take a photo</h4>
+            <div id="take-one">
+              <p>For best results, please follow the instructions below.</p>
+              <ul className="checkList instructions">
+                <li>
+                  Align your face to the on-screen guide, keeping it centered
+                  and level.
+                </li>
+                <li>
+                  Ensure even lighting on your face—avoid harsh shadows or
+                  direct sunlight.
+                </li>
+                <li>
+                  Remove glasses, hats, and hair that may cover your face.
+                </li>
+                <li>
+                  Keep a neutral expression and close your mouth naturally.
+                </li>
+                <li>Use a plain background and a clean camera lens.</li>
+              </ul>
+            </div>
+          </Modal.Body>
+          <Modal.Footer>
+            <div className="step-footer">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setModalShow1(false)}
+              >
+                <svg
+                  className="me-3"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
+                    stroke="white"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-primary">
+                PROCEED
+                <svg
+                  className="ms-3"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
+                    stroke="white"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          </Modal.Footer>
+        </div>
+        <div id="take-two">
+          <Modal.Body className="text-center">
+            <h4>take a photo</h4>
+            <p>Take a self photo following the facial pattern below.</p>
+            <img src={FacePatternDemo} className="img-fluid" />
+          </Modal.Body>
+          <Modal.Footer>
+            <div className="step-footer">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setModalShow1(false)}
+              >
+                <svg
+                  className="me-3"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
+                    stroke="white"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-primary">
+                TAKE PHOTO
+                <svg
+                  className="ms-3"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M12 16C13.6569 16 15 14.6569 15 13C15 11.3431 13.6569 10 12 10C10.3431 10 9 11.3431 9 13C9 14.6569 10.3431 16 12 16Z"
+                    stroke="#050505"
+                    stroke-width="1.3"
+                  />
+                  <path
+                    d="M1 13.5151C1 10.1104 1 8.40801 1.83224 7.18511C2.19253 6.65571 2.6555 6.20116 3.19471 5.84742C3.99506 5.32237 4.99703 5.1347 6.53111 5.06762C7.26317 5.06762 7.89347 4.52298 8.03703 3.81818C8.25239 2.76099 9.19783 2 10.2959 2H13.9263C15.0243 2 15.9698 2.76099 16.1852 3.81818C16.3288 4.52298 16.959 5.06762 17.6911 5.06762C19.2252 5.1347 20.2271 5.32237 21.0276 5.84742C21.5667 6.20116 22.0297 6.65571 22.39 7.18511C23.2222 8.40801 23.2222 10.1104 23.2222 13.5151C23.2222 16.9199 23.2222 18.6223 22.39 19.8452C22.0297 20.3746 21.5667 20.8291 21.0276 21.1829C19.782 22 18.0481 22 14.5802 22H9.64198C6.17417 22 4.44027 22 3.19471 21.1829C2.6555 20.8291 2.19253 20.3746 1.83224 19.8452C1.59718 19.4998 1.42851 19.1161 1.30748 18.6667"
+                    stroke="#050505"
+                    stroke-width="1.3"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M19 10H18"
+                    stroke="#050505"
+                    stroke-width="1.3"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          </Modal.Footer>
+        </div>
+        <div id="take-three">
+          <Modal.Body className="text-center">
+            <h4>take a photo</h4>
+            <p>Take a self photo following the facial pattern below.</p>
+            <img src={FacePattern} className="img-fluid" />
+          </Modal.Body>
+          <Modal.Footer>
+            <div className="step-footer">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setModalShow1(false)}
+              >
+                <svg
+                  className="me-3"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
+                    stroke="white"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-primary">
+                RETAKE
+                <svg
+                  className="ms-3"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M12 16C13.6569 16 15 14.6569 15 13C15 11.3431 13.6569 10 12 10C10.3431 10 9 11.3431 9 13C9 14.6569 10.3431 16 12 16Z"
+                    stroke="#050505"
+                    stroke-width="1.3"
+                  />
+                  <path
+                    d="M1 13.5151C1 10.1104 1 8.40801 1.83224 7.18511C2.19253 6.65571 2.6555 6.20116 3.19471 5.84742C3.99506 5.32237 4.99703 5.1347 6.53111 5.06762C7.26317 5.06762 7.89347 4.52298 8.03703 3.81818C8.25239 2.76099 9.19783 2 10.2959 2H13.9263C15.0243 2 15.9698 2.76099 16.1852 3.81818C16.3288 4.52298 16.959 5.06762 17.6911 5.06762C19.2252 5.1347 20.2271 5.32237 21.0276 5.84742C21.5667 6.20116 22.0297 6.65571 22.39 7.18511C23.2222 8.40801 23.2222 10.1104 23.2222 13.5151C23.2222 16.9199 23.2222 18.6223 22.39 19.8452C22.0297 20.3746 21.5667 20.8291 21.0276 21.1829C19.782 22 18.0481 22 14.5802 22H9.64198C6.17417 22 4.44027 22 3.19471 21.1829C2.6555 20.8291 2.19253 20.3746 1.83224 19.8452C1.59718 19.4998 1.42851 19.1161 1.30748 18.6667"
+                    stroke="#050505"
+                    stroke-width="1.3"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M19 10H18"
+                    stroke="#050505"
+                    stroke-width="1.3"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
+              <button type="button" className="btn btn-primary">
+                SUBMIT
+                <svg
+                  className="ms-3"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
+                    stroke="white"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          </Modal.Footer>
+        </div>
+      </Modal>
+    </>
+  );
+};
+
+export default Body;

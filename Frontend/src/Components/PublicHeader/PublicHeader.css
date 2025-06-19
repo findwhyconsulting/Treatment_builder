@@ -1,0 +1,24 @@
+header {
+    padding: 1.25rem;
+}
+.right-nav {
+    text-align: right;
+}
+.right-nav .btn {
+    font-size: 1.25rem;
+    padding: .72rem 1.875rem;
+}
+.main-logo {
+    max-width: 200px;
+    max-height: 100px;
+}
+@media (max-width:992px) {
+    header {
+        background: #F7F5F5;
+        padding: 1.25rem 0;
+    }
+    .right-nav .btn {
+        font-size: 1rem;
+        padding: .375rem 1.25rem;
+    }
+}

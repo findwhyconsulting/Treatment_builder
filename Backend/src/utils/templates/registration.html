@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Registration Confirmation</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f9;
+        color: #333;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 600px;
+        margin: 20px auto;
+        background: #ffffff;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        text-align: center;
+        background-color: #ec9837;
+        color: white;
+        padding: 10px 0;
+        border-radius: 8px 8px 0 0;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 24px;
+      }
+      .content {
+        margin: 20px 0;
+      }
+      .content p {
+        line-height: 1.6;
+      }
+      .credentials {
+        background-color: #f9f9f9;
+        padding: 15px;
+        border-radius: 5px;
+        border: 1px solid #e0e0e0;
+        margin: 20px 0;
+      }
+      .footer {
+        text-align: center;
+        font-size: 12px;
+        color: #777;
+        margin-top: 20px;
+      }
+      .footer p {
+        margin: 5px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Welcome to Treatment Builder!</h1>
+      </div>
+      <div class="content">
+        <p>Dear {{userName}},</p>
+        <p>
+          Congratulations! You have successfully registered with
+          <strong>Treatment Builder</strong>. Below are your login credentials:
+        </p>
+        <div class="credentials">
+          <p><strong>Email:</strong> {{userEmail}}</p>
+          <p><strong>Password:</strong> {{userPassword}}</p>
+        </div>
+        <p>
+          Please do not share your login credentials with anyone. For added
+          security, we recommend changing your password after your first login.
+        </p>
+        <p>
+          If you have any questions or need assistance, feel free to reach out
+          to our support team.
+        </p>
+      </div>
+      <div class="footer">
+        <p>Thank you,</p>
+        <p>The Treatment Builder Team</p>
+        <p>
+          <em
+            >This is an automated email. Please do not reply to this
+            message.</em
+          >
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

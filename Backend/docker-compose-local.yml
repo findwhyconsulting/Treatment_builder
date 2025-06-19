@@ -1,0 +1,88 @@
+# version: '3.8'
+# services:
+#   treatmentbuilderbackend:
+#     build:
+#       context: .  # The current directory is used as the build context
+#       dockerfile: Dockerfile  # Name of the Dockerfile
+#     ports:
+#       - "${PORT}:${PORT}"  # Map container port 8055 to host port 8055
+#     env_file:
+#       - .env  # Load environment variables from .env file
+#     volumes:
+#       - .:/usr/src/app  # Mount the current directory into /usr/src/app in the container
+#     networks:
+#       - treatmentbuildernetwork
+
+#   mongo:
+#     image: mongo:latest
+#     container_name: mongodb
+#     ports:
+#       - "27018:27017"  # Expose MongoDB's default port
+#     volumes:
+#       - mongo-data:/data/db  # Persistent data storage for MongoDB
+#     networks:
+#       - treatmentbuildernetwork
+
+# volumes:
+#   mongo-data:
+
+# networks:
+#   treatmentbuildernetwork:
+#     driver: bridge
+
+version: '3.8'
+services:
+  treatmentbuilderbackend:
+    build:
+      context: .  # The current directory is used as the build context
+      dockerfile: Dockerfile  # Name of the Dockerfile
+    ports:
+      - "${PORT}:${PORT}"  # Map container port 8055 to host port 8055
+    env_file:
+      - .env  # Load environment variables from .env file
+    volumes:
+      - .:/usr/src/app  # Mount the current directory into /usr/src/app in the container
+    networks:
+      - treatmentbuildernetwork
+
+  mongo:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27018:27017"  # Expose MongoDB's default port to the host on port 27018
+    volumes:
+      - mongo-data:/data/db  # Persistent data storage for MongoDB
+    networks:
+      - treatmentbuildernetwork
+
+volumes:
+  mongo-data:
+
+networks:
+  treatmentbuildernetwork:
+    driver: bridge
+
+
+# version: '3.8'
+# services:
+#   treatmentbuilderbackend:
+#     build:
+#       context: .  # The current directory is used as the build context
+#       dockerfile: Dockerfile  # Name of the Dockerfile
+#     ports:
+#       - "${PORT}:${PORT}"  # Map container port 8055 to host port 8055
+#     env_file:
+#       - .env  # Load environment variables from .env file
+#     volumes:
+#       - .:/usr/src/app  # Mount the current directory into /usr/src/app in the container
+
+#   mongo:
+#     image: mongo:latest
+#     container_name: mongodb
+#     ports:
+#       - "27018:27017"  # Expose MongoDB's default port
+#     volumes:
+#       - mongo-data:/data/db  # Persistent data storage for MongoDB
+
+# volumes:
+#   mongo-data:

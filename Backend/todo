@@ -1,0 +1,2 @@
+1 : When clinic is created we need to share the generated password with the register email address,
+    in email format    

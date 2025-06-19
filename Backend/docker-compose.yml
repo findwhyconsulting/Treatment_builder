@@ -1,0 +1,39 @@
+version: '3.8'
+services:
+  treatmentbuilderbackend:
+    build:
+      context: .  # The current directory is used as the build context
+      dockerfile: Dockerfile  # Name of the Dockerfile
+    ports:
+      - "${PORT}:${PORT}"  # Map container port 8055 to host port 8055
+    env_file:
+      - .env  # Load environment variables from .env file
+    volumes:
+      - .:/usr/src/app  # Mount the current directory into /usr/src/app in the container
+
+
+# version: "3.8"
+# services:
+#   treatmentbuilderbackend:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#       args:
+#         - PORT=${PORT}
+#     restart: always
+#     hostname: treatmentbuilderbackend-service
+#     env_file:
+#       - .env
+#     ports:
+#       - ${PORT}:${PORT}
+#     volumes: 
+#       - .:/var/www/treatmentbuilderbackend
+#       - /var/www/treatmentbuilderbackend/node_modules
+#     networks:
+#       - backend
+# networks: 
+#   backend: 
+#     driver: bridge 
+#   frontend: 
+#     external: 
+#       name: treatmentbuilderbackendnetwork

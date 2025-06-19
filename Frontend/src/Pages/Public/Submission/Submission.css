@@ -1,0 +1,38 @@
+.treat-pack .checkList li {
+    display: inline-block;
+    width: 50%;
+}
+.section-spacer{
+    margin-top: 50px !important;
+}
+.submission-sec h3 {
+    font-size: 24px;
+}
+.submission-sec h4 {
+    font-size: 20px;
+}
+@media (max-width:767px) {
+    .mobile-reverse .col-md-8 {
+        order: 2;
+    }
+    .uploaded-img {
+        margin-bottom: 20px;
+    }
+}
+
+.italic-gray {
+    font-style: italic;
+    opacity: .5;
+    margin: 15px auto;
+}
+
+.non-clickable-phone-input input {
+    pointer-events: none; /* Prevent typing */
+    background-color: transparent;
+    border: none;
+  }
+  
+  .non-clickable-phone-input .PhoneInputCountry {
+    pointer-events: none; /* Prevent dropdown from opening */
+  }
+  

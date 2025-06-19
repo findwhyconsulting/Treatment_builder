@@ -1,0 +1,34 @@
+footer {
+    background: #B0AEAB;
+    padding: 50px 0;
+    color: rgb(0 0 0 / 50%);
+}
+.privacy-post a{
+    color: rgb(0 0 0 / 50%);
+}
+ul.social-media {
+    display: flex;
+    gap: 1.38rem;
+    justify-content: end;
+    margin-bottom: 20px;
+}
+.privacy-post {
+    text-align: end;
+} 
+
+@media (max-width:767px) {
+    .privacy-post {
+        text-align: left;
+    }
+    ul.social-media {
+        justify-content: start;
+        margin-bottom: 15px;
+        margin-top: 20px;
+    }
+}
+
+
+.footer-logo {
+    max-height: 100px;
+    max-width: 200px;
+}

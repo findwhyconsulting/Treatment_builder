@@ -1,0 +1,161 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
+}
+
+header.main_header {
+  background-color: #3a96b8;
+  box-shadow: 0 10px 17px rgb(0 0 0 / 14%);
+}
+
+h6.Welcome_text_admin {
+  font-size: 28px;
+  font-weight: 700;
+
+  span {
+    color: #3a96b8;
+  }
+}
+
+.header_logo {
+  flex: 1;
+  transform: translateY(6px);
+}
+
+.header_logo img {
+  width: 160px;
+}
+
+.counter_card {
+  background-color: #e9f3f3 !important;
+  border: 1px solid #dbefef;
+  box-shadow: 0 7px 17px rgb(0 0 0 / 4%) !important;
+  border-radius: 10px !important;
+  padding: 10px 20px;
+}
+
+.counter_card.counter_card_drug {
+  background-color: #e5f2ff !important;
+  border: 1px solid #cbe5ff;
+}
+
+.counter_card.counter_card_progarm {
+  background-color: #f8eafb !important;
+  border: 1px solid #fbe2ff;
+}
+
+.counter_card_flx {
+  width: 100%;
+}
+
+.counter_card_txt {
+  text-align: left;
+}
+
+.counter_card_txt h2 {
+  font-size: 40px;
+  color: #02b2af;
+  line-height: 36px;
+  margin: 0 0 8px;
+}
+
+.counter_card.counter_card_drug .counter_card_txt h2,
+.counter_card.counter_card_drug .counter_card_icon svg path {
+  color: #2e96ff;
+}
+
+.counter_card.counter_card_progarm .counter_card_txt h2,
+.counter_card.counter_card_progarm .counter_card_icon svg path {
+  color: #b800d8;
+}
+
+.counter_card_txt p {
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 0;
+  color: #323232;
+  opacity: 1;
+}
+
+.counter_card_cntnt {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+/* main.main_content_wrapper {
+  margin-left: 240px;
+  padding: 90px 30px 30px 30px;
+} */
+
+button.MuiButton-containedPrimary {
+  background-color: #3a96b8;
+  border-radius: 6px;
+  padding: 10px 25px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+button.MuiButton-outlinedPrimary {
+  border: 1px solid #f2f2f2;
+  background-color: #ffff;
+  border-radius: 6px;
+  padding: 10px 25px;
+  color: #323232;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+button.MuiButton-outlinedPrimary:hover {
+  border: 1px solid #3a96b8;
+  color: #3a96b8;
+}
+
+.program_details_form {
+  background-color: #f9fafb;
+  border: 1px solid #f2f2f2;
+  padding: 16px 30px;
+  border-radius: 14px;
+}
+
+.MuiInputBase-input {
+  background-color: #fff;
+  /* border: 1px solid #f2f2f2; */
+  height: 1em;
+}
+
+.program_details_form label.MuiFormLabel-root {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.MuiInputBase-root.MuiOutlinedInput-root {
+  background: #fff;
+}
+
+.program_details_form .MuiInputBase-root.MuiOutlinedInput-root {
+  background: #fff;
+}
+
+.MuiInputBase-root.MuiOutlinedInput-root.MuiAutocomplete-inputRoot {
+  height: 56px;
+}
+
+textarea {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.23);
+  border-radius: 4px;
+}
+.MuiBox-root.css-iusmz7 {
+  margin: 10px 30px;
+}
+

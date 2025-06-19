@@ -1,0 +1,21 @@
+.treat-pack .checkList li {
+    display: inline-block;
+    width: 50%;
+}
+.section-spacer{
+    margin-top: 50px !important;
+}
+.submission-sec h3 {
+    font-size: 24px;
+}
+.submission-sec h4 {
+    font-size: 20px;
+}
+@media (max-width:767px) {
+    .mobile-reverse .col-md-8 {
+        order: 2;
+    }
+    .uploaded-img {
+        margin-bottom: 20px;
+    }
+}

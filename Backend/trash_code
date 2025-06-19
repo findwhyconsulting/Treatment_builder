@@ -1,0 +1,55 @@
+/**
+ * update package details.
+ * @access private
+ * @return json
+ * Created by Akash
+ * @smartData Enterprises (I) Ltd
+ * Created Date 13-Jan-2025
+ */
+
+const updatePackage = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { _id } = req.params;
+    const {
+      packageName,
+      description,
+      amount,
+      priorityLevel,
+      isDeleted,
+      removedFiles,
+    } = req.body;
+    const uploadedFiles = await getUploadedFileDetails(req);
+    console.log("uploadedFiles : ", uploadedFiles);
+
+    let jsonData = {};
+    if (packageName) jsonData.packageName = packageName;
+    if (description) jsonData.description = description;
+    if (amount) jsonData.amount = amount;
+    if (priorityLevel) jsonData.priorityLevel = priorityLevel;
+    if (isDeleted !== undefined) jsonData.isDeleted = isDeleted;
+
+    console.log("jsonData : ", jsonData);
+
+    const duplicateEntry = await recordExists(Package, {
+      _id: { $ne: _id },
+      $or: [{ packageName }, { priorityLevel }],
+    });
+    if (duplicateEntry) {
+      return Error(res, 409, "Package name & priority cannot be duplicate");
+    }
+
+    // Update package
+    const updatePackage = await Package.findByIdAndUpdate(_id, jsonData, {
+      new: true,
+    });
+    if (updatePackage) {
+      return Success(res, 200, "Package updated successfully", updatePackage);
+    } else {
+      return Error(res, 404, "Package not found");
+    }
+  } catch (error) {
+    console.error("Error updating package:", error.message);
+    return Error(res, 500, "An internal server error occurred");
+  }
+};

@@ -1,0 +1,13 @@
+.Main-Component{
+    display: flex;
+    flex-direction: row;
+    margin-top: 80px;
+}
+.Outlet {
+    flex-grow: 1;
+    padding: 10px 30px;
+}
+
+.Header.inner-header header {
+    padding: 0 !important;
+}
