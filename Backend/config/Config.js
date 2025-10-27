@@ -37,11 +37,12 @@ const config = {
   },
   staging: {
     DB: {
-      HOST: "54.201.160.69",
-      PORT: "58173",
-      DATABASE: "treatmentbuilder",
-      USERNAME: "treatmentbuilder",
-      PASSWORD: "RJMtyBV22vtGFV",
+      HOST: "db-mongodb-syd1-74857-37018056.mongo.ondigitalocean.com",
+      PORT: "27017",
+      DATABASE: "admin",
+      USERNAME: "doadmin",
+      PASSWORD: "562A14wX39jHTu7h",
+      CONNECTION_STRING: "mongodb+srv://doadmin:562A14wX39jHTu7h@db-mongodb-syd1-74857-37018056.mongo.ondigitalocean.com/admin?retryWrites=true&w=majority",
     },
     email: {
       username: "",

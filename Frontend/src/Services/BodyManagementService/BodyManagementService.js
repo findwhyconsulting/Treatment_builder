@@ -46,6 +46,13 @@ const bodyManagementService = {
       params: data,
     });
   },
+  getAllPackagesList: (data) => {
+    console.log('data getAllPackagesList: ',data);
+    
+    return axiosInstance.get(ApiUrlConstant.getAllPackages(), {
+      params: data,
+    });
+  },
 };
 
 export default bodyManagementService;

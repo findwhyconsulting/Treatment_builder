@@ -1,9 +1,9 @@
 const environments = {
   local: {
-    url: "http://localhost:8055/api/v1", // set you local url here
+    url: "http://209.38.88.129:9247/api/v1", // Updated to match the running backend server
   },
   staging: {
-    url: "https://ss.stagingsdei.com:9247/api/v1", // Set your staging URL here
+    url: "http://209.38.88.129:9247/api/v1/", // Set your staging URL here
   },
   production: {
     url: "https://production-url.com/api/v1", // Set your production URL here

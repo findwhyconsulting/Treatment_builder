@@ -167,7 +167,7 @@ const PackageForm = () => {
 
   const getAllPackages = async () => {
     try {
-      const getPackages = await bodyManagementService.getPackagesList();
+      const getPackages = await bodyManagementService.getAllPackagesList();
       if (getPackages?.data?.statusCode === 200) {
         setPackages(getPackages.data.data.data);
       } else {
@@ -240,12 +240,19 @@ const PackageForm = () => {
                     name="priorityLevel"
                     label="Priority Level"
                     fullWidth
+                    select
                     disabled={viewMode}
                     error={
                       touched.priorityLevel && Boolean(errors.priorityLevel)
                     }
                     helperText={touched.priorityLevel && errors.priorityLevel}
-                  />
+                  >
+                    {[1, 2, 3].map((level) => (
+                      <MenuItem key={level} value={level}>
+                        {level}
+                      </MenuItem>
+                    ))}
+                  </Field>
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   {/* <Field

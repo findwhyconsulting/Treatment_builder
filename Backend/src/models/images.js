@@ -12,6 +12,10 @@ const imageSchema = new mongoose.Schema(
       index: true,
       // required: true,
     },
+    spacesKey: {
+      type: String,
+      // Store the DigitalOcean Spaces key for file management
+    },
     type: {
       type: String,
     },

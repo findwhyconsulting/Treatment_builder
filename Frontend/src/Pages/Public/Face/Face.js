@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { FreeMode, Navigation, Thumbs } from "swiper/modules";
 import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
@@ -85,11 +85,10 @@ const Face = (content) => {
   const [loading, setLoading] = useState(false);
   const [hasStaticKey, setHasStaticKey] = useState(false);
   const [takePhotoModal, setTakePhotoModal] = useState(false);
-  const [showPhotoModal, setShowPhotoModal] = useState(false);
   const webcamRef = useRef(null);
-  const [capturedImage, setCapturedImage] = useState(null);
   const [showWebcam, setShowWebcam] = useState(false);
-  const [selectedRadio, setSelectedRadio] = useState(false);
+  const [webcamError, setWebcamError] = useState(null);
+  const [webcamLoading, setWebcamLoading] = useState(false);
   const fileInputRef = useRef(null);
   const [formData, setFormData] = useState({
     firstName: "",
@@ -102,13 +101,10 @@ const Face = (content) => {
   const [errors, setErrors] = useState({});
 
 
-  // Function to toggle accordion state
-  const togglePart = (part) => {
-    setExpandedPart((prev) => (prev === part ? null : part));
-  };
+
 
   //fetch the active parts for the upload image
-  const fetchActiveParts = async () => {
+  const fetchActiveParts = useCallback(async () => {
     try {
       const getContent = await PublicContentManagementService.getPublicContent({
         userName: username,
@@ -140,7 +136,7 @@ const Face = (content) => {
       setIsServiceAvailable(false);
       showToast("error", "Something went wrong while fetching active parts");
     }
-  };
+  }, [username, part, selectedImagePart]);
 
   const toggleDynamicPart = (partName) => {
     setActiveParts((prevParts) =>
@@ -152,29 +148,65 @@ const Face = (content) => {
 
   useEffect(() => {
     fetchActiveParts();
-  }, [username, part, selectedImagePart]);
+  }, [fetchActiveParts]);
 
 
 
-  const getFacePart = (nearestIndex) => {
-    for (const [part, indices] of Object.entries(FACE_PARTS)) {
-      if (indices.includes(nearestIndex)) {
-        return part;
+
+
+
+
+
+
+  const startWebcam = async () => {
+    console.log("📸 Starting webcam...");
+    setWebcamLoading(true);
+    setWebcamError(null);
+    
+    try {
+      // Check if browser supports getUserMedia
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Webcam not supported by this browser");
       }
+
+      // Request camera permission
+      console.log("📸 Requesting camera permission...");
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: "user",
+          width: { ideal: 550 },
+          height: { ideal: 550 }
+        } 
+      });
+      
+      console.log("📸 Camera permission granted, stream:", stream);
+      
+      // If we get here, permission was granted
+      setShowWebcam(true);
+      setWebcamLoading(false);
+      
+      // Clean up the test stream
+      stream.getTracks().forEach(track => track.stop());
+      
+    } catch (error) {
+      console.error("📸 Webcam error:", error);
+      setWebcamError(error.message);
+      setWebcamLoading(false);
+      setShowWebcam(false);
     }
-    return "unknown";
   };
 
-
-
-
-
   const captureImage = () => {
+    console.log("📸 captureImage called");
     if (webcamRef.current) {
+      console.log("📸 Webcam reference exists, capturing screenshot...");
       const imageSrc = webcamRef.current.getScreenshot();
+      console.log("📸 Screenshot captured:", imageSrc ? "Success" : "Failed");
       setSelectedImage(imageSrc);
       setHasStaticKey(false);
       setShowWebcam(false);
+    } else {
+      console.error("📸 Webcam reference not found");
     }
   };
 
@@ -539,23 +571,32 @@ const Face = (content) => {
 
   const getAllImages = async () => {
     try {
+      console.log("🔍 Starting getAllImages...");
       let data = {
         type: "face",
       };
+      console.log("📤 Calling ImageManagementService.getImages with data:", data);
+      
       const response = await ImageManagementService.getImages(data);
+      console.log("📥 Full API response:", response);
+      console.log("📥 Response data:", response?.data);
+      console.log("📥 Status code:", response?.data?.statusCode);
+      
       if (response?.data?.statusCode === 200) {
         const filteredImages = response?.data?.data?.data?.filter(
-          (image) => image.type == "face"
+          (image) => image.type === "face"
         );
-        console.log(
-          filteredImages,
-          "filteredImages--------------------------------"
-        );
+        console.log("✅ Filtered images:", filteredImages);
+        console.log("📊 Number of filtered images:", filteredImages?.length);
         setImageList(filteredImages);
       } else {
+        console.error("❌ API returned non-200 status:", response?.data);
         showToast("error", "Images list fetching error");
       }
     } catch (error) {
+      console.error("💥 Error in getAllImages:", error);
+      console.error("💥 Error message:", error.message);
+      console.error("💥 Error response:", error.response);
       showToast("error", "Images fetching error");
     }
   };
@@ -673,26 +714,7 @@ const Face = (content) => {
   //   });
   // };
 
-  // const handleRemovePart = (indexToRemove) => {
-  //   console.log("indexToRemove : ", indexToRemove);
 
-  //   setSelectedParts((prevParts) =>
-  //     prevParts.filter((_, index) => index !== indexToRemove)
-  //   );
-  // };
-  const handleRemovePart = (partToRemove) => {
-    // Remove part from selectedParts
-    setSelectedParts((prevParts) =>
-      prevParts.filter((part) => part.partName !== partToRemove.partName)
-    );
-
-    // Also remove the part from submitUserSelection (if it's there)
-    setSubmitUserSelection((prevSelections) =>
-      prevSelections.filter(
-        (selection) => selection.partName !== partToRemove.partName
-      )
-    );
-  };
 
   const submitSelectionForPackage = async () => {
     if (isDisabled) return;
@@ -709,7 +731,8 @@ const Face = (content) => {
       if (submitSelection?.data?.statusCode === 200) {
         setCurrentPackage(submitSelection?.data?.data);
 
-        if (currentPackage && stepper) {
+        // Move to next step after successfully setting the package
+        if (stepper) {
           stepper.next();
         }
       } else {
@@ -718,6 +741,8 @@ const Face = (content) => {
     } catch (error) {
       console.error("Error while submitting data:", error);
       showToast("error", "An error occurred while submitting your data");
+    } finally {
+      setIsDisabled(false);
     }
   };
 
@@ -785,28 +810,47 @@ const Face = (content) => {
     };
   }, []);
 
+  useEffect(() => {
+    console.log("📋 imageList updated:", imageList);
+    console.log("📋 imageList length:", imageList?.length);
+  }, [imageList]);
+
+  useEffect(() => {
+    console.log("📸 takePhotoModal state changed:", takePhotoModal);
+  }, [takePhotoModal]);
+
+  useEffect(() => {
+    console.log("📸 showWebcam state changed:", showWebcam);
+  }, [showWebcam]);
+
   //function for upload image
   const handleImageChange = async (event) => {
+    console.log("📷 handleImageChange called");
     const file = event.target.files[0];
+    console.log("📷 Selected file:", file);
 
     if (file) {
       setHasStaticKey(false);
       setSubmitUserSelection([]);
       const tempImageUrl = URL.createObjectURL(file);
+      console.log("📷 Temp image URL:", tempImageUrl);
       setSelectedImage(tempImageUrl);
 
       // Prepare form data for upload
       const formData = new FormData();
       formData.append("image", file);
+      console.log("📷 FormData prepared for upload");
 
       try {
+        console.log("📷 Uploading image...");
         const response = await ImageManagementService.uploadClientImage(
           formData
         );
+        console.log("📷 Upload response:", response);
 
         if (response?.data?.statusCode === 200) {
           showToast("success", "Image Uploaded successfully.");
-          console.log("Uploaded file URL:", response.data.fileUrl);
+          console.log("📷 Uploaded file URL:", response.data.fileUrl);
 
           setUploadedImageUrl(response.data.fileUrl);
           setSelectedImage(response.data.fileUrl);
@@ -814,27 +858,32 @@ const Face = (content) => {
 
           URL.revokeObjectURL(tempImageUrl);
         } else {
+          console.error("📷 Upload failed:", response?.data);
           showToast("error", "Failed to upload Image.");
         }
       } catch (error) {
-        console.error("Error uploading image:", error);
+        console.error("📷 Error uploading image:", error);
         showToast("error", "Error Uploading image.");
       }
     }
   };
 
   const submitImage = async () => {
+    console.log("📤 submitImage called");
     if (!selectedImage) {
+      console.error("📤 No selected image found");
       showToast("error", "Please capture or upload an image first.");
       return;
     }
 
+    console.log("📤 Selected image:", selectedImage);
     setHasStaticKey(false);
     setSubmitUserSelection([]);
 
     let file;
 
     if (selectedImage.startsWith("data:image")) {
+      console.log("📤 Converting base64 image to file...");
       const byteCharacters = atob(selectedImage.split(",")[1]);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
@@ -844,14 +893,18 @@ const Face = (content) => {
       const blob = new Blob([byteArray], { type: "image/jpeg" });
 
       file = new File([blob], "captured_image.jpg", { type: "image/jpeg" });
+      console.log("📤 File created from base64:", file);
     } else {
       file = selectedImage;
+      console.log("📤 Using existing file:", file);
     }
     const formData = new FormData();
     formData.append("image", file);
 
     try {
+      console.log("📤 Submitting image to server...");
       const response = await ImageManagementService.uploadClientImage(formData);
+      console.log("📤 Submit response:", response);
 
       if (response?.data?.statusCode === 200) {
         showToast("success", "Image Uploaded successfully.");
@@ -863,10 +916,11 @@ const Face = (content) => {
         setTakePhotoModal(false);
         setModalShow1(false);
       } else {
+        console.error("📤 Submit failed:", response?.data);
         showToast("error", "Failed to upload Image.");
       }
     } catch (error) {
-      console.error("Error submitting image:", error);
+      console.error("📤 Error submitting image:", error);
       showToast("error", "Error submitting image.");
     }
   };
@@ -920,8 +974,8 @@ const Face = (content) => {
                       </h3>
                       <p className="head-discrption">
                         {pageContent?.step1?.step1Description ||
-                          `You’ll be using this image to identify the areas you’d
-                        like to address or enhance, so it’s useful to use an
+                          `You'll be using this image to identify the areas you'd
+                        like to address or enhance, so it's useful to use an
                         image that reminds you of your own face (or your own
                         face!).`}
                       </p>
@@ -1038,7 +1092,10 @@ const Face = (content) => {
                           <button
                             type="button"
                             className="btn btn-primary"
-                            onClick={() => setModalShow(false)}
+                            onClick={() => {
+                              console.log("📤 Upload an image button clicked");
+                              setModalShow(true);
+                            }}
                             style={{
                               background:
                                 pageContent?.buttonSettings?.buttonColor || "",
@@ -1250,7 +1307,18 @@ const Face = (content) => {
                         <button
                           type="button"
                           className="btn btn-primary"
-                          onClick={() => setModalShow1(false)}
+                          onClick={() => {
+                            console.log("📸 Take a photo button clicked");
+                            console.log("📸 Current takePhotoModal state:", takePhotoModal);
+                            console.log("📸 Current showWebcam state:", showWebcam);
+                            setTakePhotoModal(true);
+                            setSelectedImage(null);
+                            // Start webcam when modal opens
+                            setTimeout(() => {
+                              startWebcam();
+                            }, 100);
+                            console.log("📸 States updated - modal should open");
+                          }}
                           style={{
                             background:
                               pageContent?.buttonSettings?.buttonColor || "",
@@ -1299,7 +1367,17 @@ const Face = (content) => {
                         <button
                           type="button"
                           className="btn btn-primary"
-                          onClick={() => stepper && stepper.next()}
+                          onClick={() => {
+                            console.log("🎯 Next step button clicked - Step 1");
+                            console.log("🎯 Selected image:", selectedImage);
+                            console.log("🎯 Stepper instance:", stepper);
+                            if (stepper) {
+                              console.log("🎯 Calling stepper.next()");
+                              stepper.next();
+                            } else {
+                              console.error("🎯 Stepper instance not found");
+                            }
+                          }}
                           disabled={!selectedImage}
                           style={{
                             background:
@@ -1344,7 +1422,7 @@ const Face = (content) => {
                       </h3>
                       <p className="head-discrption d-none d-md-block">
                         {pageContent?.step2?.step2Description ||
-                          `Click or tap on the areas of the face you’d like to
+                          `Click or tap on the areas of the face you'd like to
                         include in your treatment options. Once you tap, choose
                         the statement from the dropdown that most describes your
                         perspective.`}
@@ -1500,7 +1578,8 @@ const Face = (content) => {
                                   part.imagePartType === selectedImagePart
                               )
                               .map((part, index) =>
-                                hasStaticKey ? (
+                                // Show dots for both static images and uploaded images
+                                (hasStaticKey || selectedImage) ? (
                                   <div
                                     key={part._id || index}
                                     onClick={() =>
@@ -1532,7 +1611,7 @@ const Face = (content) => {
                                   add features to your treatment recommendation
                                 </li>
                                 <li>
-                                  Each “dot” you click on includes statements
+                                  Each "dot" you click on includes statements
                                   about your concerns or goals
                                 </li>
                                 <li>
@@ -1551,7 +1630,7 @@ const Face = (content) => {
                                 Select as many as you like, from multiple areas
                                 of the face.
                               </p>
-                              {hasStaticKey && filteredParts.length > 0 ? (
+                              {(hasStaticKey || selectedImage) && filteredParts.length > 0 ? (
                                 <Tabs
                                   activeKey={selectedImagePart}
                                   onSelect={handleTabSwitch}
@@ -2153,8 +2232,8 @@ const Face = (content) => {
                         {pageContent?.step4?.step4Description ||
                           `Leave us your details so we can call you back and have a
                         further consultation about your treatment package, and
-                        discuss booking you in for a consultation. Don’t worry,
-                        there’s no commitment, and our team are here to help.`}
+                        discuss booking you in for a consultation. Don't worry,
+                        there's no commitment, and our team are here to help.`}
                       </p>
 
                       <Form
@@ -2568,280 +2647,152 @@ const Face = (content) => {
           </Row>
         </Container>
       </section>
+      {/* Take Photo Modal */}
       <Modal
-        show={modalShow1}
+        show={takePhotoModal}
+        onHide={() => {
+          console.log("📸 Modal closing...");
+          setTakePhotoModal(false);
+          setShowWebcam(false); 
+          setSelectedImage(null);
+          setWebcamError(null);
+          setWebcamLoading(false);
+        }}
         size="xl"
-        className="custom-popup"
-        aria-labelledby="contained-modal-title-vcenter"
         centered
+        style={{
+          zIndex: 9999,
+          backgroundColor: 'rgba(0,0,0,0.5)'
+        }}
       >
-        <Modal.Header
-          closeButton
-          onHide={() => setModalShow1(false)}
-        ></Modal.Header>
-        <div id="take-one">
-          <Modal.Body className="text-center">
-            <h4>take a photo</h4>
-            <div id="take-one">
-              <p>For best results, please follow the instructions below.</p>
-              <ul className="checkList instructions">
-                <li>
-                  Align your face to the on-screen guide, keeping it centered
-                  and level.
-                </li>
-                <li>
-                  Ensure even lighting on your face—avoid harsh shadows or
-                  direct sunlight.
-                </li>
-                <li>
-                  Remove glasses, hats, and hair that may cover your face.
-                </li>
-                <li>
-                  Keep a neutral expression and close your mouth naturally.
-                </li>
-                <li>Use a plain background and a clean camera lens.</li>
-              </ul>
-            </div>
-          </Modal.Body>
-          <Modal.Footer>
-            <div className="step-footer">
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => setModalShow1(false)}
-                style={{
-                  background: pageContent?.buttonSettings?.buttonColor || "",
-                  "--button-hover-bg":
-                    pageContent?.buttonSettings?.buttonHoverColor || "#947287",
-                }}
-              >
-                <svg
-                  className="me-3"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
+        <Modal.Header closeButton style={{ backgroundColor: '#fff' }}>
+          <Modal.Title>Take a Photo</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-center" style={{ backgroundColor: '#fff', padding: '20px' }}>
+          <h4>Take a Photo</h4>
+          <p>Take a self-photo following the facial pattern below.</p>
+          <div style={{ border: '2px solid red', padding: '10px', minHeight: '400px' }}>
+            {selectedImage && !hasStaticKey ? (
+              <img src={selectedImage} alt="Captured" className="img-fluid" style={{ maxHeight: '350px' }} />
+            ) : webcamLoading ? (
+              <div style={{ padding: '50px' }}>
+                <div className="spinner-border text-primary" role="status">
+                  <span className="sr-only">Loading...</span>
+                </div>
+                <p className="mt-3">Starting camera...</p>
+                <p><small>Please allow camera access when prompted</small></p>
+              </div>
+            ) : webcamError ? (
+              <div style={{ padding: '50px', color: 'red' }}>
+                <h5>Camera Error</h5>
+                <p>{webcamError}</p>
+                <button 
+                  className="btn btn-primary mt-2" 
+                  onClick={startWebcam}
+                  disabled={webcamLoading}
                 >
-                  <path
-                    d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
-                    stroke="white"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                style={{
-                  background: pageContent?.buttonSettings?.buttonColor || "",
-                  "--button-hover-bg":
-                    pageContent?.buttonSettings?.buttonHoverColor || "#947287",
+                  Try Again
+                </button>
+                <p className="mt-3"><small>
+                  Make sure:<br/>
+                  - Camera permission is allowed<br/>
+                  - No other app is using the camera<br/>
+                  - Your browser supports webcam access
+                </small></p>
+              </div>
+            ) : showWebcam ? (
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                videoConstraints={{
+                  width: 550,
+                  height: 550,
+                  facingMode: "user",
                 }}
-                onClick={() => {
-                  setTakePhotoModal(true);
-                  setShowWebcam(true);
+                className="img-fluid"
+                onUserMedia={() => {
+                  console.log("📸 Webcam stream started successfully");
                 }}
-              >
-                PROCEED 
-                <svg
-                  className="ms-3"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
+                onUserMediaError={(error) => {
+                  console.error("📸 Webcam stream error:", error);
+                  setWebcamError("Failed to access camera: " + error.message);
+                  setShowWebcam(false);
+                }}
+                style={{ maxHeight: '350px', width: '100%' }}
+              />
+            ) : (
+              <div style={{ padding: '50px' }}>
+                <h5>Camera Access Required</h5>
+                <p>Click the button below to start your camera</p>
+                <button 
+                  className="btn btn-primary btn-lg" 
+                  onClick={startWebcam}
+                  disabled={webcamLoading}
                 >
-                  <path
-                    d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
-                    stroke="white"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
-            </div>
-          </Modal.Footer>
-        </div>
-        <div id="take-two">
-          <Modal
-            show={takePhotoModal}
-            onHide={() => {
-              setTakePhotoModal(false);
-              setShowWebcam(false); 
-              setSelectedImage(null); 
-            }}
-            size="xl"
-            centered
-          >
-            <Modal.Header closeButton></Modal.Header>
-            <Modal.Body className="text-center">
-              <h4>Take a Photo</h4>
-              <p>Take a self-photo following the facial pattern below.</p>
+                  {webcamLoading ? 'Starting...' : 'Start Camera'}
+                </button>
+              </div>
+            )}
+          </div>
+        </Modal.Body>
 
-              {selectedImage && !hasStaticKey ? (
-                <img src={selectedImage} alt="Captured" className="img-fluid" />
-              ) : (
-                showWebcam && (
-                  <Webcam
-                    audio={false}
-                    ref={webcamRef}
-                    screenshotFormat="image/jpeg"
-                    videoConstraints={{
-                      width: 550,
-                      height: 550,
-                      facingMode: "user",
-                    }}
-                    className="img-fluid"
-                  />
-                )
-              )}
-            </Modal.Body>
+        <Modal.Footer style={{ backgroundColor: '#fff' }}>
+          <div className="step-footer">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                console.log("📸 Cancel button clicked");
+                setTakePhotoModal(false);
+                setSelectedImage(null);
+                setShowWebcam(false);
+                setWebcamError(null);
+                setWebcamLoading(false);
+              }}
+            >
+              Cancel
+            </button>
 
-            <Modal.Footer>
-              <div className="step-footer">
+            {selectedImage ? (
+              <>
                 <button
                   type="button"
-                  className="btn btn-primary"
+                  className="btn btn-warning"
                   onClick={() => {
-                    setModalShow1(false);
-                    setTakePhotoModal(false);
                     setSelectedImage(null);
-                  }}
-                  style={{
-                    background: pageContent?.buttonSettings?.buttonColor || "",
-                    "--button-hover-bg":
-                      pageContent?.buttonSettings?.buttonHoverColor ||
-                      "#947287",
+                    setHasStaticKey(true);
+                    setShowWebcam(true);
                   }}
                 >
-                  <svg
-                    className="me-3"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M21 12H2.33333L9.33322 19M5.83333 8.5L9.33333 5"
-                      stroke="white"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                  Cancel
+                  Retake
                 </button>
 
-                {selectedImage ? (
-                  <>
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      style={{
-                        background:
-                          pageContent?.buttonSettings?.buttonColor || "",
-                        "--button-hover-bg":
-                          pageContent?.buttonSettings?.buttonHoverColor ||
-                          "#947287",
-                      }}
-                      onClick={() => {
-                        setSelectedImage(null);
-                        setHasStaticKey(true);
-                        setShowWebcam(true);
-                      }}
-                    >
-                      Retake
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      style={{
-                        background:
-                          pageContent?.buttonSettings?.buttonColor || "",
-                        "--button-hover-bg":
-                          pageContent?.buttonSettings?.buttonHoverColor ||
-                          "#947287",
-                      }}
-                      onClick={() => {
-                        if (stepper) stepper.next(); 
-                        submitImage(); 
-                      }}
-                      
-                    >
-                      Submit
-                      <svg
-                        className="ms-3"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M3 12H21.6667L14.6668 19M18.1667 8.5L14.6667 5"
-                          stroke="white"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                  </>
-                ) : (
-                  showWebcam && (
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={captureImage}
-                      style={{
-                        background:
-                          pageContent?.buttonSettings?.buttonColor || "",
-                        "--button-hover-bg":
-                          pageContent?.buttonSettings?.buttonHoverColor ||
-                          "#947287",
-                      }}
-                    >
-                      Take Photo
-                      <svg
-                        className="ms-3"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M12 16C13.6569 16 15 14.6569 15 13C15 11.3431 13.6569 10 12 10C10.3431 10 9 11.3431 9 13C9 14.6569 10.3431 16 12 16Z"
-                          stroke="#050505"
-                          strokeWidth="1.3"
-                        />
-                        <path
-                          d="M1 13.5151C1 10.1104 1 8.40801 1.83224 7.18511C2.19253 6.65571 2.6555 6.20116 3.19471 5.84742C3.99506 5.32237 4.99703 5.1347 6.53111 5.06762C7.26317 5.06762 7.89347 4.52298 8.03703 3.81818C8.25239 2.76099 9.19783 2 10.2959 2H13.9263C15.0243 2 15.9698 2.76099 16.1852 3.81818C16.3288 4.52298 16.959 5.06762 17.6911 5.06762C19.2252 5.1347 20.2271 5.32237 21.0276 5.84742C21.5667 6.20116 22.0297 6.65571 22.39 7.18511C23.2222 8.40801 23.2222 10.1104 23.2222 13.5151C23.2222 16.9199 23.2222 18.6223 22.39 19.8452C22.0297 20.3746 21.5667 20.8291 21.0276 21.1829C19.782 22 18.0481 22 14.5802 22H9.64198C6.17417 22 4.44027 22 3.19471 21.1829C2.6555 20.8291 2.19253 20.3746 1.83224 19.8452C1.59718 19.4998 1.42851 19.1161 1.30748 18.6667"
-                          stroke="#050505"
-                          strokeWidth="1.3"
-                          strokeLinecap="round"
-                        />
-                        <path
-                          d="M19 10H18"
-                          stroke="#050505"
-                          strokeWidth="1.3"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </button>
-                  )
-                )}
-              </div>
-            </Modal.Footer>
-          </Modal>
-        </div>
+                <button
+                  type="button"
+                  className="btn btn-success"
+                  onClick={() => {
+                    console.log("📸 Submit button clicked");
+                    if (stepper) stepper.next(); 
+                    submitImage(); 
+                  }}
+                >
+                  Submit
+                </button>
+              </>
+                          ) : (
+                showWebcam && (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={captureImage}
+                  >
+                    Take Photo
+                  </button>
+                )
+              )}
+          </div>
+        </Modal.Footer>
       </Modal>
     </>
   );

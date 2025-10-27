@@ -9,15 +9,33 @@ import {
   getPaginatedResults,
   getSingleDocument,
   getUploadedFileDetails,
+  getCloudUploadedFileDetails,
   matchPassword,
   recordExists,
   updateData,
   verifyToken,
 } from "../utils/customeFunction";
+import { deleteFromSpaces } from "../services/spacesService.js";
 import { Error, Success } from "../utils/customeResponse";
 import path from "path";
 import fs from "fs";
 import { verifyForgotPassword } from "../utils/customeEmailSender";
+
+/**
+ * Extract the key from a DigitalOcean Spaces URL
+ * @param {string} url - The full URL
+ * @returns {string|null} - The key or null if not a valid Spaces URL
+ */
+const extractKeyFromSpacesUrl = (url) => {
+  if (!url || !url.includes('digitaloceanspaces.com')) {
+    return null;
+  }
+  
+  // Extract key from URL like: https://aesthetiq.syd1.digitaloceanspaces.com/profiles/filename.jpg
+  const parts = url.split('/');
+  const keyParts = parts.slice(4); // Skip protocol, domain, and bucket
+  return keyParts.join('/');
+};
 
 /**
  * Function is used for user sign-up.
@@ -247,7 +265,22 @@ const getUserProfile = async (req, res) => {
 
     const user = await getSingleDocument(User, { _id: _id });
     if (user?.profilePicture?.path) {
-      user.profilePicture.path = `${process.env.BASE_PATH}${user?.profilePicture?.path}`;
+      // Use cloud URL if available
+      if (user.profilePicture.cloudUrl) {
+        user.profilePicture.path = user.profilePicture.cloudUrl;
+      } 
+      // Check if it's a valid cloud URL (DigitalOcean Spaces)
+      else if (user.profilePicture.path.includes('digitaloceanspaces.com')) {
+        user.profilePicture.path = user.profilePicture.path;
+      }
+      // If it's a local filename (no http), add BASE_PATH
+      else if (!user.profilePicture.path.startsWith('http')) {
+        user.profilePicture.path = `${process.env.BASE_PATH}${user.profilePicture.path}`;
+      }
+      // If it's an old/invalid HTTP URL, set to null so frontend shows default
+      else {
+        user.profilePicture.path = null;
+      }
     }
     if (user) {
       return Success(res, 200, "User profile fetched successfully", user);
@@ -287,7 +320,22 @@ const listUsers = async (req, res) => {
 
     users.data = users.data.map((user) => {
       if (user.profilePicture && user.profilePicture.path) {
-        user.profilePicture.path = `${process.env.BASE_PATH}${user.profilePicture.path}`;
+        // Use cloud URL if available
+        if (user.profilePicture.cloudUrl) {
+          user.profilePicture.path = user.profilePicture.cloudUrl;
+        } 
+        // Check if it's a valid cloud URL (DigitalOcean Spaces)
+        else if (user.profilePicture.path.includes('digitaloceanspaces.com')) {
+          user.profilePicture.path = user.profilePicture.path;
+        }
+        // If it's a local filename (no http), add BASE_PATH
+        else if (!user.profilePicture.path.startsWith('http')) {
+          user.profilePicture.path = `${process.env.BASE_PATH}${user.profilePicture.path}`;
+        }
+        // If it's an old/invalid HTTP URL, set to null so frontend shows default
+        else {
+          user.profilePicture.path = null;
+        }
       } else {
         user.profilePicture = {};
       }
@@ -423,25 +471,33 @@ const updateUser = async (req, res) => {
     if (status != null) jsonData.status = status;
     if (clinicName) jsonData.clinicName = clinicName;
 
-    const uploads = await getUploadedFileDetails(req);
-    if (uploads?.path) {
+    // Handle profile image replacement
+    if (req.spacesUpload) {
+      // Get existing user to find old image
       const existingUser = await getSingleDocument(User, { _id });
-
-      // Unlink old profile picture if exists
+      
+      // Delete old image from DigitalOcean Spaces if it exists
       if (existingUser?.profilePicture?.path) {
-        const oldFilePath = path.join(
-          __dirname,
-          "../..",
-          "user-uploads/profiles",
-          existingUser.profilePicture.path
-        );
-        fs.unlink(oldFilePath, (err) => {
-          if (err) console.error("Error unlinking old profile picture:", err);
-        });
+        const oldKey = extractKeyFromSpacesUrl(existingUser.profilePicture.path);
+        if (oldKey) {
+          try {
+            await deleteFromSpaces(oldKey);
+            console.log("Old profile image deleted:", oldKey);
+          } catch (deleteError) {
+            console.error("Failed to delete old image:", deleteError.message);
+            // Continue with upload even if deletion fails
+          }
+        }
       }
-
+      
       // Add new profile picture to update data
-      jsonData.profilePicture = uploads;
+      jsonData.profilePicture = {
+        originalName: req.file.originalname,
+        savedName: req.spacesUpload.fileName,
+        path: req.spacesUpload.cdnUrl,
+        spacesKey: req.spacesUpload.key,
+        cloudUrl: req.spacesUpload.cdnUrl,
+      };
     }
 
     // Check for duplicate email or mobile
@@ -472,7 +528,22 @@ const updateUser = async (req, res) => {
     const updatedData = await updateData(User, checkCondition);
 
     if (updatedData?.profilePicture?.path) {
-      updatedData.profilePicture.path = `${process.env.BASE_PATH}${updatedData.profilePicture.path}`;
+      // Use cloud URL if available
+      if (updatedData.profilePicture.cloudUrl) {
+        updatedData.profilePicture.path = updatedData.profilePicture.cloudUrl;
+      } 
+      // Check if it's a valid cloud URL (DigitalOcean Spaces)
+      else if (updatedData.profilePicture.path.includes('digitaloceanspaces.com')) {
+        updatedData.profilePicture.path = updatedData.profilePicture.path;
+      }
+      // If it's a local filename (no http), add BASE_PATH
+      else if (!updatedData.profilePicture.path.startsWith('http')) {
+        updatedData.profilePicture.path = `${process.env.BASE_PATH}${updatedData.profilePicture.path}`;
+      }
+      // If it's an old/invalid HTTP URL, set to null so frontend shows default
+      else {
+        updatedData.profilePicture.path = null;
+      }
     }
 
     if (updatedData) {
@@ -500,10 +571,30 @@ const getSingleUser = async (req, res) => {
     const { _id } = req.params;
 
     // Fetch the record using the common function
-    const bodyPart = await getSingleDocument(User, { _id });
-    if (bodyPart) {
+    const user = await getSingleDocument(User, { _id });
+    if (user) {
+      // Process profile picture path like other functions
+      if (user?.profilePicture?.path) {
+        // Use cloud URL if available
+        if (user.profilePicture.cloudUrl) {
+          user.profilePicture.path = user.profilePicture.cloudUrl;
+        } 
+        // Check if it's a valid cloud URL (DigitalOcean Spaces)
+        else if (user.profilePicture.path.includes('digitaloceanspaces.com')) {
+          user.profilePicture.path = user.profilePicture.path;
+        }
+        // If it's a local filename (no http), add BASE_PATH
+        else if (!user.profilePicture.path.startsWith('http')) {
+          user.profilePicture.path = `${process.env.BASE_PATH}${user.profilePicture.path}`;
+        }
+        // If it's an old/invalid HTTP URL, set to null so frontend shows default
+        else {
+          user.profilePicture.path = null;
+        }
+      }
+      
       // If record found, return it
-      return Success(res, 200, "User fetched successfully", bodyPart);
+      return Success(res, 200, "User fetched successfully", user);
     } else {
       return Error(res, 404, "User not found");
     }
@@ -647,25 +738,33 @@ const updateProfile = async (req, res) => {
     if (isDeleted != null) jsonData.isDeleted = isDeleted;
     if (status != null) jsonData.status = status;
 
-    const uploads = await getUploadedFileDetails(req);
-    if (uploads?.path) {
+    // Handle profile image replacement
+    if (req.spacesUpload) {
+      // Get existing user to find old image
       const existingUser = await getSingleDocument(User, { _id });
-
-      // Unlink old profile picture if exists
+      
+      // Delete old image from DigitalOcean Spaces if it exists
       if (existingUser?.profilePicture?.path) {
-        const oldFilePath = path.join(
-          __dirname,
-          "../..",
-          "user-uploads/profiles",
-          existingUser.profilePicture.path
-        );
-        fs.unlink(oldFilePath, (err) => {
-          if (err) console.error("Error unlinking old profile picture:", err);
-        });
+        const oldKey = extractKeyFromSpacesUrl(existingUser.profilePicture.path);
+        if (oldKey) {
+          try {
+            await deleteFromSpaces(oldKey);
+            console.log("Old profile image deleted:", oldKey);
+          } catch (deleteError) {
+            console.error("Failed to delete old image:", deleteError.message);
+            // Continue with upload even if deletion fails
+          }
+        }
       }
-
+      
       // Add new profile picture to update data
-      jsonData.profilePicture = uploads;
+      jsonData.profilePicture = {
+        originalName: req.file.originalname,
+        savedName: req.spacesUpload.fileName,
+        path: req.spacesUpload.cdnUrl,
+        spacesKey: req.spacesUpload.key,
+        cloudUrl: req.spacesUpload.cdnUrl,
+      };
     }
 
     // Check for duplicate email or mobile
@@ -683,7 +782,22 @@ const updateProfile = async (req, res) => {
     const updatedData = await updateData(User, checkCondition);
 
     if (updatedData?.profilePicture?.path) {
-      updatedData.profilePicture.path = `${process.env.BASE_PATH}${updatedData.profilePicture.path}`;
+      // Use cloud URL if available
+      if (updatedData.profilePicture.cloudUrl) {
+        updatedData.profilePicture.path = updatedData.profilePicture.cloudUrl;
+      } 
+      // Check if it's a valid cloud URL (DigitalOcean Spaces)
+      else if (updatedData.profilePicture.path.includes('digitaloceanspaces.com')) {
+        updatedData.profilePicture.path = updatedData.profilePicture.path;
+      }
+      // If it's a local filename (no http), add BASE_PATH
+      else if (!updatedData.profilePicture.path.startsWith('http')) {
+        updatedData.profilePicture.path = `${process.env.BASE_PATH}${updatedData.profilePicture.path}`;
+      }
+      // If it's an old/invalid HTTP URL, set to null so frontend shows default
+      else {
+        updatedData.profilePicture.path = null;
+      }
     }
 
     if (updatedData) {

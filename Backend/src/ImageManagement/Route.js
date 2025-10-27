@@ -1,4 +1,5 @@
 import { uploadSingleClientImage, uploadSingleImage } from "../middleware/userUploads";
+import { uploadSingleImageToSpaces, uploadSingleClientImageToSpaces } from "../middleware/spacesUpload.js";
 import Controller from "./Controller";
 
 export default (router) => {
@@ -7,13 +8,13 @@ export default (router) => {
   // =============================================================
   router.post(
     "/upload-image",
-    uploadSingleImage("image"),
+    uploadSingleImageToSpaces("image", "face-images"),
     Controller.addImageWithCode
   ); // for single image upload
 
   router.post(
     "/uploadImage",
-    uploadSingleClientImage("image"),
+    uploadSingleClientImageToSpaces("image", "client-images"),
   );
 
   router.get("/images", Controller.listImages);

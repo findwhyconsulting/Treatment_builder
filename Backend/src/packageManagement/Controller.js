@@ -10,6 +10,7 @@ import {
   getPaginatedResultsForAll,
   getSingleDocument,
   getUploadedFileDetails,
+  getCloudUploadedFileDetails,
   recordExists,
   resolveTieWithPriority,
 } from "../utils/customeFunction";
@@ -17,6 +18,23 @@ import { Error, Success } from "../utils/customeResponse";
 import { resolve } from "path";
 import Body from "../models/bodyParts";
 import updatePartDetails from "../bodyManagement/Controller";
+import { deleteFromSpaces } from "../services/spacesService.js";
+
+/**
+ * Extract the key from a DigitalOcean Spaces URL
+ * @param {string} url - The full URL
+ * @returns {string|null} - The key or null if not a valid Spaces URL
+ */
+const extractKeyFromSpacesUrl = (url) => {
+  if (!url || !url.includes('digitaloceanspaces.com')) {
+    return null;
+  }
+  
+  // Extract key from URL like: https://aesthetiq.syd1.digitaloceanspaces.com/packages/filename.jpg
+  const parts = url.split('/');
+  const keyParts = parts.slice(4); // Skip protocol, domain, and bucket
+  return keyParts.join('/');
+};
 
 /**
  * Admin package creation proces, save the packageshere.
@@ -33,7 +51,17 @@ const createPackages = async (req, res) => {
     const { packageName, description, amount, priorityLevel, includes } =
       req.body;
 
-    const uploadedFiles = await getUploadedFileDetails(req);
+    // Handle package image uploads with proper naming
+    let uploadedFiles = [];
+    if (req.spacesUploads && req.spacesUploads.length > 0) {
+      uploadedFiles = req.spacesUploads.map(upload => ({
+        originalName: upload.originalName || upload.fileName,
+        savedName: upload.fileName,
+        path: upload.cdnUrl,
+        spacesKey: upload.key,
+        cloudUrl: upload.cdnUrl,
+      }));
+    }
 
     // Check for missing fields
     if (
@@ -127,7 +155,8 @@ const getPackages = async (req, res) => {
       packages.data = packages?.data.map((item) => {
         item.files = item?.files.map((file) => ({
           ...file,
-          path: `${process.env.BASE_PATH}${file.path}`, // Prepending BASE_PATH to the path
+          // Use cloud URL if available, otherwise use local path with BASE_PATH
+          path: file.cloudUrl || (file.path.startsWith('http') ? file.path : `${process.env.BASE_PATH}${file.path}`),
         }));
         return item;
       });
@@ -154,11 +183,14 @@ const getPackages = async (req, res) => {
 const getAllPackages = async (req, res) => {
   try {
     const userId = req.user._id;
+    const userRole = req.user.role;
     const { page, limit, sort, search, status } = req.query;
 
     const searchFields = ["packageName", "description"];
     const [sortField, sortOrder] = sort?.split(":") || ["createdAt", "desc"];
 
+    // For clinic users, show all packages (admin + own) for priority reference
+    // For admin users, show all packages as before
     const packages = await getPaginatedResultsForAll(Package, {
       searchFields,
       search,
@@ -166,7 +198,7 @@ const getAllPackages = async (req, res) => {
       sortOrder,
       page,
       limit,
-      userId,
+      // Remove userId filter to show all packages for priority reference
       status,
     });
 
@@ -174,7 +206,8 @@ const getAllPackages = async (req, res) => {
       packages.data = packages?.data.map((item) => {
         item.files = item?.files.map((file) => ({
           ...file,
-          path: `${process.env.BASE_PATH}${file.path}`, // Prepending BASE_PATH to the path
+          // Use cloud URL if available, otherwise use local path with BASE_PATH
+          path: file.cloudUrl || (file.path.startsWith('http') ? file.path : `${process.env.BASE_PATH}${file.path}`),
         }));
         return item;
       });
@@ -211,7 +244,8 @@ const getPackageDetails = async (req, res) => {
     if (fetchPackage.files) {
       fetchPackage.files = fetchPackage.files.map((file) => ({
         ...file,
-        path: `${process.env.BASE_PATH}${file.path}`, // Prepending BASE_PATH to the path
+        // Use cloud URL if available, otherwise use local path with BASE_PATH
+        path: file.cloudUrl || (file.path.startsWith('http') ? file.path : `${process.env.BASE_PATH}${file.path}`),
       }));
     }
 
@@ -417,8 +451,6 @@ const updatePackage = async (req, res) => {
       jsonData.priorityLevel = priorityLevel;
     }
 
-    const uploadedFiles = await getUploadedFileDetails(req);
-
     if (description) jsonData.description = description;
     if (amount) jsonData.amount = amount;
     if (includes) jsonData.includes = includes;
@@ -430,14 +462,37 @@ const updatePackage = async (req, res) => {
       jsonData.status = "inactive";
     }
 
-    // Handle file updates
-    let updatedFiles = existingPackage.files || [];
-    if (uploadedFiles) {
-      updatedFiles = Array.isArray(uploadedFiles)
-        ? [...updatedFiles, ...uploadedFiles]
-        : [...updatedFiles, uploadedFiles];
+    // Handle image replacement
+    if (req.shouldReplaceImages && req.spacesUploads && req.spacesUploads.length > 0) {
+      // Delete old images from DigitalOcean Spaces
+      const oldFiles = existingPackage.files || [];
+      for (const oldFile of oldFiles) {
+        if (oldFile.path) {
+          const oldKey = extractKeyFromSpacesUrl(oldFile.path);
+          if (oldKey) {
+            try {
+              await deleteFromSpaces(oldKey);
+              console.log("Old package image deleted:", oldKey);
+            } catch (deleteError) {
+              console.error("Failed to delete old package image:", deleteError.message);
+              // Continue with upload even if deletion fails
+            }
+          }
+        }
+      }
+      
+      // Replace with new images
+      const newFiles = req.spacesUploads.map(upload => ({
+        originalName: upload.originalName || upload.fileName,
+        savedName: upload.fileName,
+        path: upload.cdnUrl,
+        spacesKey: upload.key,
+        cloudUrl: upload.cdnUrl,
+      }));
+      
+      jsonData.files = newFiles;
+      console.log(`Replaced ${oldFiles.length} old images with ${newFiles.length} new images`);
     }
-    jsonData.files = updatedFiles;
 
     // Check jsonData before updating
     console.log("Final jsonData before update:", jsonData);
@@ -608,10 +663,11 @@ const getRecommendation = async (req, res) => {
       return Error(res, 404, "Package not found");
     }
 
-    const basePath = process.env.BASE_PATH || "http://localhost:8055/";
+    // Process file paths to handle both cloud and local storage
     recommendedPackage.files = recommendedPackage.files.map((file) => ({
       ...file,
-      path: `${basePath}${file.path}`,
+      // Use cloud URL if available, otherwise use local path with BASE_PATH
+      path: file.cloudUrl || (file.path.startsWith('http') ? file.path : `${process.env.BASE_PATH}${file.path}`),
     }));
 
     // console.log("Final Recommended Package:", recommendedPackage);

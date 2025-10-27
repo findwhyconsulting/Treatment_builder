@@ -4,21 +4,26 @@ const config = require ("./Config")
 
 const db=require('./Config').get(process.env.NODE_ENV).DB;
 
-const mongodburl=`mongodb://${db.HOST}:${db.PORT}/${db.DATABASE}`
-// console.log('mongodburl__',mongodburl);
+// Use the full connection string for DigitalOcean MongoDB (MongoDB Atlas format)
+const mongodburl = db.CONNECTION_STRING || `mongodb://${db.HOST}:${db.PORT}/${db.DATABASE}`;
+console.log('MongoDB URL:', mongodburl.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')); // Log URL without exposing credentials
 
-
-const usecredential={
-    user:db.USERNAME,
-    pass:db.PASSWORD
-} 
 export const mongoconnection = async()=>{
     try{
-        await mongoose.connect(mongodburl,usecredential);
-        console.log("This Database Is Connected To the Server !!!");
+        // For MongoDB Atlas/DigitalOcean, credentials are in the connection string
+        const connectionOptions = {
+            retryWrites: true,
+            w: 'majority',
+            maxPoolSize: 10,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+        };
+        
+        await mongoose.connect(mongodburl, connectionOptions);
+        console.log("DigitalOcean MongoDB Database Connected Successfully!");
     }
     catch(e){
-        console.log('db-error--->',e)
+        console.log('Database connection error:', e)
         throw e.message;
     }
 } 

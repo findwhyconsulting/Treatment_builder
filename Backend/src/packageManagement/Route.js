@@ -2,6 +2,7 @@ import {
   uploadMultipleImages,
   uploadMultiplePackageFiles,
 } from "../middleware/userUploads";
+import { uploadMultipleImagesToSpaces, uploadMultipleImagesToSpacesOptional, uploadPackageImagesWithReplacement } from "../middleware/spacesUpload.js";
 import Controller from "./Controller";
 
 export default (router) => {
@@ -12,12 +13,12 @@ export default (router) => {
   router.get("/packages/all", Controller.getAllPackages);
   router.post(
     "/packages",
-    uploadMultiplePackageFiles("files", 6),
+    uploadPackageImagesWithReplacement("files", 6, "packages"),
     Controller.createPackages
   );
   router.put(
     "/packages/:_id",
-    uploadMultiplePackageFiles("files", 6),
+    uploadPackageImagesWithReplacement("files", 6, "packages"),
     Controller.updatePackage
   );
   router.put(

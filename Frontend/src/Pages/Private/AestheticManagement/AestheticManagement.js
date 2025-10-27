@@ -247,6 +247,9 @@ const AestheticManagement = () => {
                   {sortColumn === "part" &&
                     (sortDirection === "asc" ? "▲" : "▼")}
                 </StyledTableCell>
+                <StyledTableCell>
+                  Package Name
+                </StyledTableCell>
                 <StyledTableCell onClick={() => handleSort("status")}>
                   Status{" "}
                   {sortColumn=== "status" && 
@@ -259,7 +262,7 @@ const AestheticManagement = () => {
               {isLoading ? (
                 Array.from({ length: rowsPerPage }).map((_, index) => (
                   <StyledTableRow key={index}>
-                    <StyledTableCell colSpan={4}>
+                    <StyledTableCell colSpan={6}>
                       <Skeleton animation="wave" />
                     </StyledTableCell>
                   </StyledTableRow>
@@ -282,6 +285,15 @@ const AestheticManagement = () => {
                       {item?.part
                         ? item.part.charAt(0).toUpperCase() + item.part.slice(1)
                         : ""}
+                    </StyledTableCell>
+                    <StyledTableCell>
+                      {item?.question && item.question.length > 0 
+                        ? item.question
+                            .flatMap(q => q.packageIds || [])
+                            .map(pkg => pkg.packageName)
+                            .filter((name, index, arr) => arr.indexOf(name) === index) // Remove duplicates
+                            .join(", ")
+                        : "No packages"}
                     </StyledTableCell>
                     <StyledTableCell>
                       <Switch
@@ -327,7 +339,7 @@ const AestheticManagement = () => {
                 ))
               ) : (
                 <StyledTableRow>
-                  <StyledTableCell colSpan={4} align="center">
+                  <StyledTableCell colSpan={6} align="center">
                     No Data Available
                   </StyledTableCell>
                 </StyledTableRow>

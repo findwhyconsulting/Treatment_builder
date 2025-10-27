@@ -4,6 +4,7 @@ import {
   createUser,
   generateRandomPassword,
   getUploadedFileDetails,
+  getCloudUploadedFileDetails,
   newCopyPackageForClinc,
   newCopyPartsForClinc,
   recordExists,
@@ -22,7 +23,18 @@ import { sendCustomEmail } from "../utils/sendEmail";
 
 const addUser = async (req, res) => {
   try {
-    const uploads = await getUploadedFileDetails(req);
+    // Handle profile image upload
+    let profilePicture = null;
+    if (req.spacesUpload) {
+      profilePicture = {
+        originalName: req.file.originalname,
+        savedName: req.spacesUpload.fileName,
+        path: req.spacesUpload.cdnUrl,
+        spacesKey: req.spacesUpload.key,
+        cloudUrl: req.spacesUpload.cdnUrl,
+      };
+    }
+    
     const randomPassword = await generateRandomPassword(12);
 
     const { firstName, lastName, userName, email, mobile, bio, clinicName } =
@@ -65,7 +77,7 @@ const addUser = async (req, res) => {
         password: randomPassword,
         role: "clinic",
         bio,
-        profilePicture: uploads,
+        profilePicture: profilePicture,
       });
     } catch (err) {
       if (err.code === 11000) {

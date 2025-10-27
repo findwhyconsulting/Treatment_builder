@@ -13,6 +13,7 @@ import {
   updateData,
 } from "../utils/customeFunction";
 import { Error, Success } from "../utils/customeResponse";
+import { uploadToSpaces } from "../services/spacesService.js";
 
 /**
  * Function is used for adding face images and type and part details.
@@ -26,16 +27,19 @@ import { Error, Success } from "../utils/customeResponse";
 const addImageWithCode = async (req, res) => {
   try {
     const { uniqueCode, type } = req.body;
-    const uploadedImage = getUploadedFileDetails(req);
-    if (!uploadedImage) {
-      return Error(res, 400, "No image uploaded");
+
+    // Check if image was uploaded to Spaces via middleware
+    if (!req.spacesUpload) {
+      return Error(res, 400, "No image uploaded or upload failed");
     }
 
     let data = {
-      imageUrl: uploadedImage?.path,
-      uniqueCode: uniqueCode,
+      imageUrl: req.spacesUpload.cdnUrl, // Use CDN URL from DigitalOcean Spaces
+      uniqueCode: uniqueCode || req.spacesUpload.fileName,
       type: type,
+      spacesKey: req.spacesUpload.key, // Store the Spaces key for future reference
     };
+    
     const addNewImage = await addRecord(Image, data);
     if (addNewImage) {
       return Success(res, 200, "Item added successfully", addNewImage);
@@ -43,6 +47,7 @@ const addImageWithCode = async (req, res) => {
       return Error(res, 500, "Failed to add item");
     }
   } catch (error) {
+    console.error("Error in addImageWithCode:", error);
     return Error(res, 500, "Internal Server Error");
   }
 };
@@ -74,12 +79,9 @@ const listImages = async (req, res) => {
     });
 
     if (images.data.length > 0) {
-      // Add base path to image URLs
-      images.data = images.data.map((image) => {
-        image.imageUrl = `${process.env.BASE_PATH}${image.imageUrl}`;
-        return image;
-      });
-
+      // Images from DigitalOcean Spaces already have full CDN URLs
+      // No need to modify the imageUrl as it's already a complete URL
+      
       // Respond with success and image data
       return Success(res, 200, "Images fetched successfully", {
         data: images.data,

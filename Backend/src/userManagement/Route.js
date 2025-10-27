@@ -1,4 +1,5 @@
 import { uploadSingleProfileImage } from "../middleware/userUploads";
+import { uploadSingleImageToSpaces, uploadProfileImageWithReplacement } from "../middleware/spacesUpload.js";
 import Controller from "./Controller";
 
 export default (router) => {
@@ -20,12 +21,12 @@ export default (router) => {
   router.get("/profile", Controller.getUserProfile);
   router.put(
     "/update-profile",
-    uploadSingleProfileImage("profileImage"),
+    uploadProfileImageWithReplacement("profileImage", "profiles"),
     Controller.updateProfile
   );
   router.put(
     "/update-user/:_id",
-    uploadSingleProfileImage("profileImage"),
+    uploadProfileImageWithReplacement("profileImage", "profiles"),
     Controller.updateUser
   );
   router.get("/get-user/:_id", Controller.getSingleUser);

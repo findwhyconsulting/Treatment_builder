@@ -827,6 +827,32 @@ export const getUploadedFileDetails = (req) => {
   }
 };
 
+/**
+ * Get uploaded file details from cloud storage (DigitalOcean Spaces)
+ * @param {Object} req - Request object containing spacesUploads
+ * @returns {Array|Object|null} File details from cloud storage
+ */
+export const getCloudUploadedFileDetails = (req) => {
+  // Retrieve files from cloud storage uploads
+  const spacesUploads = req.spacesUploads || (req.spacesUpload ? [req.spacesUpload] : []);
+
+  if (spacesUploads && spacesUploads.length > 0) {
+    // Map file details from cloud storage
+    const fileDetails = spacesUploads.map((upload) => ({
+      originalName: upload.originalName || upload.fileName,
+      savedName: upload.fileName,
+      path: upload.cdnUrl, // Use CDN URL for cloud storage
+      spacesKey: upload.key, // Store the Spaces key for future reference
+      cloudUrl: upload.cdnUrl, // Explicit cloud URL field
+    }));
+
+    // Return either a single file detail or an array of file details
+    return spacesUploads.length === 1 ? fileDetails[0] : fileDetails;
+  } else {
+    return [];
+  }
+};
+
 // Reusable function to generate paths
 export const generatePaths = (services, userName) => {
   const basePath = process.env.CLIENT_BASE_PATH;

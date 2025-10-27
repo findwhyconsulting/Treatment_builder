@@ -48,6 +48,13 @@ const ConcernForm = () => {
     body: ["upperBody", "midBody", "lowerBody"],
   };
 
+  // Predefined parts for face image part types
+  const predefinedFaceParts = {
+    upperFace: ["Forehead", "Eyebrows", "Glabella", "Eyes", "Crows feet", "Temples"],
+    midFace: ["Nose", "Cheekbones", "Cheeks", "Laser-labial folds"],
+    lowerFace: ["Lips", "Chin", "Jaw", "Perioral (mouth)"]
+  };
+
   const isEditMode = !viewMode && action === "Edit";
   const isAddMode = action === "Add";
 
@@ -104,6 +111,24 @@ const ConcernForm = () => {
     } catch (error) {
       showToast("error", "Failed to load parts data");
       console.error(error);
+    }
+  };
+
+  // Get available parts based on bodyType and imagePartType
+  const getAvailableParts = () => {
+    if (bodyType === "face" && imagePartType && predefinedFaceParts[imagePartType]) {
+      // For face types, return predefined parts based on imagePartType
+      return predefinedFaceParts[imagePartType].map((part, index) => ({
+        _id: `predefined_${imagePartType}_${index}`,
+        part: part,
+        bodyType: bodyType,
+        isPredefined: true
+      }));
+    } else if (bodyType === "body") {
+      // For body types, return parts from database
+      return availableParts;
+    } else {
+      return [];
     }
   };
 
@@ -369,15 +394,27 @@ const ConcernForm = () => {
                         disabled={viewMode}
                         error={touched.part && Boolean(errors.part)}
                       >
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "flex-end",
-                            mt: 2,
-                          }}
-                        >
-                        </Box>
-                        {availableParts.map((part) => (
+                        {/* Show Add Part button only for body types */}
+                        {bodyType === "body" && (
+                          <Box
+                            sx={{
+                              display: "flex",
+                              justifyContent: "flex-end",
+                              mt: 2,
+                              p: 1,
+                            }}
+                          >
+                            <Button
+                              startIcon={<AddCircle />}
+                              onClick={() => handleDialogOpen()}
+                              disabled={!bodyType}
+                              size="small"
+                            >
+                              Add New Part
+                            </Button>
+                          </Box>
+                        )}
+                        {getAvailableParts().map((part) => (
                           <MenuItem key={part._id} value={part.part}>
                             <Box
                               sx={{
@@ -389,34 +426,37 @@ const ConcernForm = () => {
                               <Typography sx={{ flexGrow: 1 }}>
                                 {part.part}
                               </Typography>
-                              <Box
-                                sx={{
-                                  marginLeft: "auto", // Push the icons to the right
-                                  display: "flex",
-                                  gap: 1, // Space between icons
-                                  alignItems: "center",
-                                }}
-                              >
-                                <IconButton
-                                  onClick={(e) => {
-                                    e.stopPropagation(); // Prevent dropdown close
-                                    handleDialogOpen(part);
+                              {/* Show edit/delete buttons only for body parts (not predefined face parts) */}
+                              {!part.isPredefined && (
+                                <Box
+                                  sx={{
+                                    marginLeft: "auto", // Push the icons to the right
+                                    display: "flex",
+                                    gap: 1, // Space between icons
+                                    alignItems: "center",
                                   }}
-                                  size="small"
                                 >
-                                  <EditIcon />
-                                </IconButton>
-                                <IconButton
-                                  color="error"
-                                  onClick={(e) => {
-                                    e.stopPropagation(); // Prevent dropdown close
-                                    handleDeletePart(part);
-                                  }}
-                                  size="small"
-                                >
-                                  <DeleteIcon />
-                                </IconButton>
-                              </Box>
+                                  <IconButton
+                                    onClick={(e) => {
+                                      e.stopPropagation(); // Prevent dropdown close
+                                      handleDialogOpen(part);
+                                    }}
+                                    size="small"
+                                  >
+                                    <EditIcon />
+                                  </IconButton>
+                                  <IconButton
+                                    color="error"
+                                    onClick={(e) => {
+                                      e.stopPropagation(); // Prevent dropdown close
+                                      handleDeletePart(part);
+                                    }}
+                                    size="small"
+                                  >
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </Box>
+                              )}
                             </Box>
                           </MenuItem>
                         ))}

@@ -1,4 +1,5 @@
 import { uploadSingleProfileImage } from "../middleware/userUploads";
+import { uploadSingleImageToSpaces, uploadProfileImageWithReplacement } from "../middleware/spacesUpload.js";
 import Controller from "./Controller";
 
 export default (router) => {
@@ -7,7 +8,7 @@ export default (router) => {
   // =============================================================
   router.post(
     "/users",
-    uploadSingleProfileImage("profileImage"),
+    uploadProfileImageWithReplacement("profileImage", "profiles"),
     Controller.addUser
   );
 

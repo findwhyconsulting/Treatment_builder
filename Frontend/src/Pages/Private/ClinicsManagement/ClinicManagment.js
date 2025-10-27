@@ -250,10 +250,7 @@ const ClinicManagement = () => {
                       >
                         <Avatar
                           alt="Profile Image"
-                          src={
-                            clinic?.profilePicture?.path ||
-                            "/default-avatar.jpg"
-                          }
+                          src={clinic?.profilePicture?.path || "/default-avatar.jpg"}
                           sx={{ width: 40, height: 40 }}
                         />
                       </Box>

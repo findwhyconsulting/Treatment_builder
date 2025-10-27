@@ -173,9 +173,7 @@ const ClinicForm = () => {
           <Avatar
             alt="Profile Image"
             src={
-              profileImage ||
-              formData?.profilePicture?.path ||
-              "/default-avatar.jpg"
+              profileImage || formData?.profilePicture?.path || "/default-avatar.jpg"
             }
             sx={{ width: 100, height: 100 }}
           />

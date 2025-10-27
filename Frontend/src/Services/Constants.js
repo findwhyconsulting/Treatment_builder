@@ -41,7 +41,8 @@ const ApiUrlConstant = {
   // Body Management Endpoint's For Package |
   // =================================
   // addPartNew: () => `${apiUrl}/add-part`,
-  getPackages: () => `${apiUrl}/packages/all`,
+  getPackages: () => `${apiUrl}/packages`,
+  getAllPackages: () => `${apiUrl}/packages/all`,
   getRecommendation: () => `${apiUrl}/recommendations`,
   // updateParts: (id) => `${apiUrl}/update-part/${id}`,
 
