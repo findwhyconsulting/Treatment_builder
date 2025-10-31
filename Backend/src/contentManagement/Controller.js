@@ -11,7 +11,7 @@ import {
   getPaginatedResultsForAll,
   getSingleContent,
   getSingleDocument,
-  getUploadedFileDetails,
+  getCloudUploadedFileDetails,
   recordExists,
   updateOldContent,
 } from "../utils/customeFunction";
@@ -45,10 +45,10 @@ const getContent = async (req, res) => {
       paths,
     };
     if (responseContent?.logo?.path) {
-      const basePath = process.env.BASE_PATH || "http://localhost:8055"; // Set your base URL
-      responseContent.logo.path = responseContent?.logo?.path
-        ? `${basePath}/${responseContent?.logo?.path}`
-        : ""; // Modify the path
+      // Handle both DigitalOcean URLs and local paths
+      responseContent.logo.path = responseContent.logo.cloudUrl || 
+                                 (responseContent.logo.path.startsWith('http') ? responseContent.logo.path : 
+                                  `${process.env.BASE_PATH}/${responseContent.logo.path}`);
     }
     return Success(res, 200, "Content found", responseContent);
   } catch (error) {
@@ -224,7 +224,7 @@ const resetContent = async (req, res) => {
 const changeLogo = async (req, res) => {
   try {
     const { user } = req.body;
-    const uploadedLogo = await getUploadedFileDetails(req);
+    const uploadedLogo = await getCloudUploadedFileDetails(req);
     const contentData = await getSingleContent(Content, {
       user: new mongoose.Types.ObjectId(user),
     });
@@ -233,7 +233,14 @@ const changeLogo = async (req, res) => {
     }
     let jsonData = {};
     if (uploadedLogo) {
-      jsonData.logo = uploadedLogo;
+      // For DigitalOcean Spaces uploads, store the cloud details
+      jsonData.logo = {
+        originalName: uploadedLogo.originalName,
+        savedName: uploadedLogo.savedName,
+        path: uploadedLogo.cloudUrl, // Use cloudUrl as the main path
+        spacesKey: uploadedLogo.spacesKey,
+        cloudUrl: uploadedLogo.cloudUrl
+      };
     }
 
     const updatedUser = await Content.findByIdAndUpdate(
@@ -243,10 +250,13 @@ const changeLogo = async (req, res) => {
     );
 
     if (updatedUser) {
-      const basePath = process.env.BASE_PATH || "http://localhost:8055"; // Set your base URL
-      updatedUser.logo.path = `${basePath}/${updatedUser.logo.path}`; // Modify the path
+      // Return the logo path - should be the cloudUrl for new uploads
+      const logoPath = updatedUser.logo?.cloudUrl || updatedUser.logo?.path;
 
-      return Success(res, 200, "Logo updated successfully", updatedUser);
+      return Success(res, 200, "Logo updated successfully", {
+        ...updatedUser.toObject(),
+        logoPath: logoPath
+      });
     } else {
       return Error(res, 500, "Failed to update logo");
     }

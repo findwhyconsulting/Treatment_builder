@@ -49,6 +49,7 @@ const Face = (content) => {
   const [points, setPoints] = useState([]);
   const [selectedPartsList, setSelectedPartsList] = useState([]);
   const [activeParts, setActiveParts] = useState([]);
+  const [allActiveParts, setAllActiveParts] = useState([]); // Store ALL concerns, not filtered by tab
   const { username, part } = useParams();
   const [isServiceAvailable, setIsServiceAvailable] = useState(true);
   const [selectedQuestions, setSelectedQuestions] = useState({});
@@ -112,19 +113,36 @@ const Face = (content) => {
       });
 
       if (getContent?.data?.statusCode === 200) {
+        console.log("🎯 DEBUG API Response:", getContent?.data?.data);
+        
         const activePartsArray = Array.isArray(
           getContent?.data?.data?.activepParts
         )
           ? getContent.data.data.activepParts
           : [];
 
+        console.log("🎯 DEBUG activePartsArray from API:", activePartsArray);
+        console.log("🎯 DEBUG selectedImagePart:", selectedImagePart);
+
+        // Store ALL concerns (unfiltered)
+        const allPartsWithState = activePartsArray.map((p) => ({
+          ...p,
+          isOpen: p.isOpen || false,
+        }));
+        setAllActiveParts(allPartsWithState);
+        console.log("🎯 DEBUG setAllActiveParts (ALL concerns):", allPartsWithState);
+
+        // Filter for current tab display
         const filteredParts = activePartsArray
           .filter((partObj) => partObj.imagePartType === selectedImagePart)
           .map((p) => ({
             ...p,
             isOpen: p.isOpen || false,
           }));
+          
+        console.log("🎯 DEBUG filteredParts after imagePartType filter:", filteredParts);
 
+        console.log("🎯 DEBUG fetchActiveParts - setting activeParts:", filteredParts);
         setActiveParts(filteredParts);
 
         setIsServiceAvailable(true);
@@ -502,13 +520,18 @@ const Face = (content) => {
   };
 
   const handleImageClick = (image) => {
+    console.log("🖱️ handleImageClick called");
+    console.log("   📸 Image parts:", image?.parts);
+    console.log("   🎯 Current activeParts state:", activeParts);
+    
     setSelectedParts([]);
     const parts = image?.parts || [];
     setSelectedImage(image?.imageUrl);
     setActualSelectedImage(image);
     setImageParts(parts);
-    const filtered = filterActiveParts(parts, activepParts);
+    const filtered = filterActiveParts(parts, allActiveParts); // Use allActiveParts (ALL concerns) instead of filtered activeParts
 
+    console.log("   ✅ Filtered parts result:", filtered);
     setFilteredParts(filtered);
     setHasStaticKey(true);
     setSubmitUserSelection([]);
@@ -602,17 +625,28 @@ const Face = (content) => {
   };
 
   const filterActiveParts = (imageParts, activeParts) => {
+    console.log("🔍 DEBUG filterActiveParts called:");
+    console.log("   📸 imageParts:", imageParts);
+    console.log("   🎯 activeParts:", activeParts);
+    
     if (!Array.isArray(imageParts) || !Array.isArray(activeParts)) {
+      console.log("❌ Invalid arrays - imageParts or activeParts not arrays");
       return [];
     }
-    console.log("imageparts-------", imageParts);
 
-    return imageParts
+    const result = imageParts
       .map((imagePart) => {
+        console.log(`   🔍 Checking imagePart: ${imagePart.partName}`);
+        
         // Find a matching active part based on the part name
         const matchingActivePart = activeParts.find(
           (activePart) => activePart.part === imagePart.partName
         );
+
+        console.log(`   🎯 Found matching concern: ${matchingActivePart ? 'YES' : 'NO'}`);
+        if (matchingActivePart) {
+          console.log(`   ✅ Match details:`, matchingActivePart);
+        }
 
         // If a matching part is found, include the questions and other data
         if (matchingActivePart) {
@@ -630,6 +664,9 @@ const Face = (content) => {
         };
       })
       .filter((part) => part.questions.length > 0); // Optionally filter to keep only parts with questions
+    
+    console.log("🎯 Final filtered result:", result);
+    return result;
   };
 
   // Example usage

@@ -1,10 +1,10 @@
 footer {
     background: #B0AEAB;
     padding: 50px 0;
-    color: rgb(0 0 0 / 50%);
+    /* Removed default color - will use inline styles from content settings */
 }
 .privacy-post a{
-    color: rgb(0 0 0 / 50%);
+    /* Removed default color - will use inline styles from content settings */
 }
 ul.social-media {
     display: flex;

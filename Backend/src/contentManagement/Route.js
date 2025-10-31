@@ -1,4 +1,4 @@
-import { uploadSingleLogo } from "../middleware/userUploads";
+import { uploadSingleImageToSpaces } from "../middleware/spacesUpload";
 import Controller from "./Controller";
 
 export default (router) => {
@@ -13,6 +13,6 @@ export default (router) => {
   router.get("/contents", Controller.getContent);
   router.put("/contents", Controller.updateContent);
   router.post("/contents/reset", Controller.resetContent);
-  router.put("/settings/logo", uploadSingleLogo("logo"), Controller.changeLogo);
+  router.put("/settings/logo", uploadSingleImageToSpaces("logo"), Controller.changeLogo);
   return router;
 };

@@ -300,7 +300,7 @@ const ContentManagement = () => {
         >
           <label htmlFor="logo-upload" style={{ cursor: "pointer" }}>
             <Avatar
-              src={logoPreview || myContent?.logoPath || "/default-logo.png"}
+              src={logoPreview || (myContent?.logoPath ? `${myContent.logoPath}?t=${Date.now()}` : "/default-logo.png")}
               alt="Logo"
               sx={{ width: 100, height: 100, cursor: "pointer" }}
             />
